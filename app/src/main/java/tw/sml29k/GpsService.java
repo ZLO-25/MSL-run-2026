@@ -216,6 +216,10 @@ public class GpsService extends Service implements LocationListener {
                 double d = Route.GEL_KM[i] * 1000 - curS;
                 if (d > -80 && d < 250) { key = "gel" + i; say = "該吃" + Route.GEL_T[i] + "能量膠了，配一百毫升水"; pat = new long[]{0, 200, 100, 200}; break; }
             }
+            if (key.isEmpty()) for (int i = 0; i < Route.AID_KM.length; i++) {
+                double d = Route.AID_KM[i] * 1000 - curS;
+                if (d > -60 && d < 200) { key = "aid" + Route.AID_N[i]; say = "前方補給站" + Route.AID_N[i] + "號，有" + Route.AID_SAY[i] + "，靠邊減速"; pat = new long[]{0, 150}; break; }
+            }
         }
         if (!key.isEmpty() && !key.equals(lastAlert)) { buzz(pat); speak(say); lastAlert = key; lastAlertAt = now; }
         if (key.isEmpty() && now - lastAlertAt > 60000) lastAlert = "";

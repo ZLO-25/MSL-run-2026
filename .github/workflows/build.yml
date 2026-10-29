@@ -51,3 +51,9 @@ jobs:
           tag_name: latest
           name: 日月潭29K 最新版（v${{ env.VER }}）
           files: 29K-v${{ env.VER }}.apk
+      - name: 「最新版」只留目前這一個 APK
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          for a in $(gh release view latest --json assets --jq '.assets[].name'); do
+            [ "$a" = "29K-v${VER}.apk" ] || gh release delete-asset latest "$a" -y
+          done

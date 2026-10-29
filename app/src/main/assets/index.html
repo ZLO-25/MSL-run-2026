@@ -14,20 +14,20 @@
 :root{
   --bg:#0b0f11;--card:#161c1f;--line:#28323a;--fg:#f4f6f5;--sub:#9fb0b6;
   --ok:#3ddc97;--bad:#ff6b5e;--warn:#ffc24a;--btn:#20292e;
-  --up3:#ff5f52;--up2:#f58a6e;--up1:#a9605a;--flat:#4b575c;--dn1:#4f7fae;--dn2:#4a9bf0;--dn3:#7dc0ff;
+  --aid:#5ab8ff;--up3:#ff5f52;--up2:#f58a6e;--up1:#a9605a;--flat:#4b575c;--dn1:#4f7fae;--dn2:#4a9bf0;--dn3:#7dc0ff;
   color-scheme:dark;
 }
 @media (prefers-color-scheme:light){
   :root:not([data-theme="dark"]){
     --bg:#f3f4f1;--card:#ffffff;--line:#d9ddd8;--fg:#101312;--sub:#5a6460;
-    --ok:#0f8a5c;--bad:#c93a30;--warn:#8f5f00;--btn:#e7eae6;
+    --ok:#0f8a5c;--bad:#c93a30;--warn:#8f5f00;--btn:#e7eae6;--aid:#1c6fbf;
     --up3:#a8302f;--up2:#e34948;--up1:#f2a3a2;--flat:#c9c8c2;--dn1:#9ec5f4;--dn2:#3987e5;--dn3:#184f95;
     color-scheme:light;
   }
 }
 :root[data-theme="light"]{
   --bg:#f3f4f1;--card:#ffffff;--line:#d9ddd8;--fg:#101312;--sub:#5a6460;
-  --ok:#0f8a5c;--bad:#c93a30;--warn:#8f5f00;--btn:#e7eae6;
+  --ok:#0f8a5c;--bad:#c93a30;--warn:#8f5f00;--btn:#e7eae6;--aid:#1c6fbf;
   --up3:#a8302f;--up2:#e34948;--up1:#f2a3a2;--flat:#c9c8c2;--dn1:#9ec5f4;--dn2:#3987e5;--dn3:#184f95;
   color-scheme:light;
 }
@@ -47,6 +47,18 @@ main{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
 #alert.show{display:block}
 #alert.turn{background:var(--bad);color:#fff}
 #alert.gel{background:var(--warn);color:#161200}
+#alert.aid{background:var(--aid);color:#04121f}
+.aidrow{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.aidrow:empty{display:none}
+.aidrow .drop{color:var(--aid);font-size:22px;line-height:1}
+.aidrow .an{font-size:19px;font-weight:800}
+.aidrow .ad{margin-left:auto;font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+.aidrow.near{background:color-mix(in srgb,var(--aid) 18%,transparent);border:0;border-radius:10px;padding:8px 10px}
+.aidrow .sub{flex-basis:100%;font-size:15px;color:var(--sub);margin-top:-4px}
+.tag{display:inline-block;font-size:13px;font-weight:800;padding:1px 7px;border-radius:999px;border:1.5px solid currentColor;margin-right:4px;white-space:nowrap}
+.tag.w{color:var(--aid)} .tag.f{color:var(--ok)} .tag.s{color:var(--warn)}
+table.aid{width:100%;border-collapse:collapse;font-size:16px} table.aid td,table.aid th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.aid th{font-size:13px;color:var(--sub);font-weight:600} table.aid td.num{font-weight:800;color:var(--aid);text-align:center} table.aid tr.cur td{background:var(--btn)} table.aid tr.past td{opacity:.45}
 #alert.off,#alert.cut{background:var(--btn);color:var(--bad);border:2px solid var(--bad)}
 .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
 .lab{font-size:14px;color:var(--sub);font-weight:600}
@@ -177,6 +189,7 @@ main{padding-bottom:76px}
     <div class="eta"><span>計畫 <b id="etaPlan">—</b> 到</span><span>預計 <b id="etaPred">—</b></span><span id="etaDiff"></span></div>
     <div class="lmnote" id="lmnote"></div>
     <div class="gel" id="gel"></div>
+    <div class="aidrow" id="aidrow"></div>
   </section>
 
   <section class="card">
@@ -229,6 +242,12 @@ main{padding-bottom:76px}
    <div class="phase"><b>12–18K</b><div><b>穩爬B坡</b>跑 4 走 1，最高點後陡下小步</div></div>
    <div class="phase"><b>18–25.8K</b><div><b>護腿下坡</b>長下坡別衝，留腿給 C坡</div></div>
    <div class="phase" style="border:0"><b>25.8–29K</b><div><b>C坡清空</b>快走＋碎步，最後 500m 才衝</div></div>
+  </section>
+  <section class="card">
+   <h2>補給站（29K 用 11 站）</h2>
+   <div style="margin:-2px 0 8px"><span class="tag w">水</span>水／運動飲料　<span class="tag f">補給</span>有食物　<span class="tag s">鹽</span>有鹽</div>
+   <table class="aid" id="aidTbl"><thead><tr><th>站</th><th>K</th><th>地點・補給</th><th>計畫到</th></tr></thead><tbody></tbody></table>
+   <div class="note" style="margin-top:8px">29K 只用 1–10 號和 14 號。11 號（頭社派出所）給 42K，別指望。29.4K 之後的站跟 29K 無關。</div>
   </section>
   <section class="card">
    <h2>能量膠 + 喝水</h2>
@@ -349,6 +368,23 @@ const LM = [
   { n: '14', name: '大舌滿', km: 27.5, note: 'C坡最陡 7–11%：快走、碎步。有備用膠。' },
   { n: '終', name: '向山 終點', km: 28.8, note: '最後 500m 才衝！' }
 ];
+// 官方補給站（大會手冊 九、補給計畫）：w=水 f=補給 s=鹽；14 號為「最後 1.9K」
+const AID = [
+  { n: 1, km: 3.5, name: '水社遊客中心', s: 'w' },
+  { n: 2, km: 6.2, name: '文武廟停車場', s: 'wf' },
+  { n: 3, km: 9.6, name: '水蛙頭步道', s: 'w' },
+  { n: 4, km: 11.2, name: '纜車站', s: 'wfs' },
+  { n: 5, km: 14.3, name: '土亭仔', s: 'w' },
+  { n: 6, km: 15.5, name: '玄奘寺停車場', s: 'wf' },
+  { n: 7, km: 18.2, name: '玄光寺停車場', s: 'ws' },
+  { n: 8, km: 20.4, name: '三隻魚空地', s: 'wf' },
+  { n: 9, km: 21.7, name: '路邊長型地', s: 'ws' },
+  { n: 10, km: 24.3, name: '哇拉密冰店', s: 'wf' },
+  { n: 14, km: 26.9, name: '大舌滿餐廳', s: 'wf', kmTxt: '最後1.9K' }
+];
+const AID_LAB = { w: '水', f: '補給', s: '鹽' };
+const aidTags = a => [...a.s].map(c => `<span class="tag ${c}">${AID_LAB[c]}</span>`).join('');
+const aidSay = a => [...a.s].map(c => AID_LAB[c]).join('＋');
 const GELS = [{ k: 4.5, t: '#1' }, { k: 10, t: '#2' }, { k: 14, t: '#3' }, { k: 19, t: '#4' }, { k: 24.4, t: '#5' }, { k: 27.5, t: '備用' }];
 const CUT = [{ km: 11.2, name: '纜車站', clock: '9:00', min: 145 }, { km: 25.8, name: '頭社', clock: '10:29', min: 234 }, { km: 28.8, name: '終點', clock: '11:05', min: 270 }];
 const ROWS = [
@@ -426,7 +462,7 @@ function gradeWord(g) { return g >= 7 ? '陡上' : g >= 4 ? '上坡' : g >= 2 ? 
 let TH = {};
 function readTheme() {
   const cs = getComputedStyle(document.documentElement);
-  for (const k of ['bg', 'card', 'line', 'fg', 'sub', 'ok', 'bad', 'warn', 'up3', 'up2', 'up1', 'flat', 'dn1', 'dn2', 'dn3']) TH[k] = cs.getPropertyValue('--' + k).trim();
+  for (const k of ['bg', 'card', 'line', 'fg', 'sub', 'ok', 'bad', 'warn', 'up3', 'up2', 'up1', 'flat', 'dn1', 'dn2', 'dn3', 'aid']) TH[k] = cs.getPropertyValue('--' + k).trim();
   fullCache = null;
 }
 
@@ -596,6 +632,11 @@ function drawProfile(c, w, h, k0, k1, yMin, yMax, opt) {
   }
   c.fillStyle = TH.warn; c.font = '12px system-ui,sans-serif';
   for (const g of GELS) if (g.k >= k0 && g.k <= k1) c.fillText('◆', X(g.k), Math.max(padT + 8, Y(E(g.k * 1000)) - 9));
+  for (const a of AID) if (a.km >= k0 && a.km <= k1) {   // 補給站：藍色水滴（底線上方）
+    const x = X(a.km), y = base - 9, big = (k1 - k0) <= 10, r = big ? 6 : 4.5, hgt = big ? 9 : 7;
+    c.fillStyle = TH.aid; c.beginPath(); c.moveTo(x, y - hgt); c.quadraticCurveTo(x + r, y, x, y + r * .75); c.quadraticCurveTo(x - r, y, x, y - hgt); c.strokeStyle = TH.card; c.lineWidth = 2.5; c.stroke(); c.fill();
+    if (big) { c.font = '700 11px system-ui,sans-serif'; c.lineWidth = 3; c.strokeText(String(a.n), x, y - 16); c.fillText(String(a.n), x, y - 16); }
+  }
   for (const l of LM) if (l.km >= k0 - .05 && l.km <= k1 + .05) {
     const x = X(l.km), y = base + (opt.xt ? 31 : 14), r = (k1 - k0) > 12 ? 7.5 : l.n.length > 1 ? 10 : 9;
     c.fillStyle = TH.fg; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
@@ -701,7 +742,7 @@ function renderWait(now) {
   } else diag = '請到戶外空曠處，通常 30–60 秒。';
   $('zname').textContent = diag;
   for (const id of ['grade', 'alt', 'pace']) $(id).textContent = '—';
-  $('lmnum').textContent = '–'; $('lmname').textContent = '定位後顯示'; $('lmdist').textContent = '—'; $('lmnote').textContent = '定位成功後會自動顯示里程、坡度與下個地標。'; $('gel').textContent = '';
+  $('lmnum').textContent = '–'; $('lmname').textContent = '定位後顯示'; $('lmdist').textContent = '—'; $('lmnote').textContent = '定位成功後會自動顯示里程、坡度與下個地標。'; $('gel').textContent = ''; $('aidrow').className = 'aidrow'; $('aidrow').innerHTML = '<span class="drop">💧</span><span class="an">第一個補給站：3.5K 水社</span>';
   $('etaPlan').textContent = '—'; $('etaPred').textContent = '—'; $('etaDiff').textContent = ''; $('plan').textContent = '—'; $('diff').textContent = '—'; $('pred').textContent = '—'; setCls($('diff'), ''); setCls($('pred'), '');
   $('cut').textContent = '—'; $('arrive').className = ''; $('alert').className = ''; lastAlertKey = '';
   $('gpsNote').textContent = gpsMsg; idleChart();
@@ -711,7 +752,7 @@ function renderOff(now) {
   $('do').textContent = '你目前不在賽道上'; $('zname').textContent = '距離賽道最近點 ' + fmtOff(dev) + '（GPS 正常運作中）';
   $('zone').style.borderLeftColor = TH.warn;
   for (const id of ['grade', 'alt', 'pace']) $(id).textContent = '—';
-  $('lmnum').textContent = '–'; $('lmname').textContent = '到賽道上才會顯示'; $('lmdist').textContent = '—'; $('lmnote').textContent = '里程、坡度、提醒與分段紀錄會在你進入賽道 300 m 內自動開始。'; $('gel').textContent = '';
+  $('lmnum').textContent = '–'; $('lmname').textContent = '到賽道上才會顯示'; $('lmdist').textContent = '—'; $('lmnote').textContent = '里程、坡度、提醒與分段紀錄會在你進入賽道 300 m 內自動開始。'; $('gel').textContent = ''; $('aidrow').className = 'aidrow'; $('aidrow').innerHTML = '';
   $('etaPlan').textContent = '—'; $('etaPred').textContent = '—'; $('etaDiff').textContent = ''; $('plan').textContent = '—'; $('diff').textContent = '—'; $('pred').textContent = '—'; setCls($('diff'), ''); setCls($('pred'), '');
   $('cut').textContent = '—'; $('arrive').className = '';
   const al = $('alert'); al.className = 'show off'; al.textContent = '不在賽道上：離賽道 ' + fmtOff(dev) + '。'; lastAlertKey = '';
@@ -765,6 +806,13 @@ function render() {
   const ar = $('arrive'); if (Date.now() < arriveUntil) { ar.textContent = '✔ ' + arriveText; ar.className = 'show'; } else ar.className = '';
   highlightPlan(km);
   const ng = GELS.find(x => x.k * 1000 > sM - 80), gelNear = ng && (ng.k * 1000 - sM) < 250;
+  const na = AID.find(a => a.km * 1000 > sM - 60), aidNear = na && (na.km * 1000 - sM) < 300, ar2 = $('aidrow');
+  if (na) {
+    const dm = na.km * 1000 - sM, pm = planMin(na.km);
+    ar2.className = 'aidrow' + (aidNear ? ' near' : '');
+    ar2.innerHTML = `<span class="drop">💧</span><span class="an">補給 ${na.n}・${na.name}</span><span class="ad">${dm <= 30 ? '到了' : fmtDist(dm)}</span>` +
+      `<div class="sub">${aidTags(na)} ${na.kmTxt || na.km + 'K'}・計畫 ${clockOf(pm)} 到` + (aidNear ? '・<b style="color:var(--fg)">靠邊減速，拿杯喝 2–3 口</b>' : '') + '</div>';
+  } else { ar2.className = 'aidrow'; ar2.innerHTML = '<span class="drop">💧</span><span class="an">補給站都過了，終點見</span>'; }
   $('gel').innerHTML = ng ? '◆ 能量膠 <b>' + ng.t + '</b>　' + (gelNear ? '<b>就是現在（平路再吃）</b>' : '還有 ' + fmtDist(ng.k * 1000 - sM) + '（' + ng.k + 'K）') : '補給都吃完了。';
 
   const el = elapsedSec(), planAt = planMin(km);
@@ -792,9 +840,10 @@ function render() {
   if (sM > 24800 && sM < 26200) { key = 'turn'; cls = 'turn'; txt = '⚠ 頭社路口：29K 往【右】轉回向山，不要跟 42K 往左！'; }
   else if (mode === 'gps' && dev != null && dev > 80 && lastFix && now - lastFix < 20000) { key = 'off' + Math.floor(sM / 500); cls = 'off'; txt = '你離路線 ' + Math.round(dev) + ' m，確認有沒有跑錯路。'; }
   else if (cutDanger) { key = 'cut'; cls = 'cut'; txt = '關門吃緊：請加快，必要時只走不停。'; }
-  else if (gelNear && ng.k !== 27.5) { key = 'gel' + ng.t; cls = 'gel'; txt = '◆ 該吃能量膠 ' + ng.t + ' 了（配 100–150 ml 水）'; }
+  else if (gelNear && ng.k !== 27.5) { key = 'gel' + ng.t; cls = 'gel'; txt = '◆ 該吃能量膠 ' + ng.t + ' 了（配 100–150 ml 水）' + (na && Math.abs(na.km - ng.k) < 0.5 ? '・補給站就在旁邊' : ''); }
+  else if (na && na.km * 1000 - sM < 200) { key = 'aid' + na.n; cls = 'aid'; txt = '💧 補給站 ' + na.n + '：' + aidSay(na) + '。靠邊減速，喝 2–3 口'; }
   al.className = cls ? 'show ' + cls : ''; al.textContent = txt;
-  if (key && key !== lastAlertKey && mode !== 'idle') buzz(cls === 'turn' ? [300, 150, 300, 150, 600] : cls === 'gel' ? [200, 100, 200] : [400, 200, 400]);
+  if (key && key !== lastAlertKey && mode !== 'idle') buzz(cls === 'turn' ? [300, 150, 300, 150, 600] : cls === 'gel' ? [200, 100, 200] : cls === 'aid' ? [150] : [400, 200, 400]);
   lastAlertKey = key;
 
   for (const [id, m] of [['bGps', 'gps'], ['bManual', 'manual'], ['bDemo', 'demo']]) $(id).classList.toggle('on', mode === m);
@@ -860,11 +909,16 @@ for (const t in PAGES) $(t).onclick = () => showPage(PAGES[t]);
 $('bMore').onclick = () => showPage('pgMore');
 /* ---------- 計畫表 ---------- */
 function renderPlan() {
+  renderAid();
   const tb = $('planTbl').tBodies[0]; tb.textContent = ''; const sc = 270 / PLAN_TOTAL;
   PL.forEach((r, i) => { const tr = document.createElement('tr'); tr.dataset.i = i; tr.innerHTML = `<td><b>${r.a}–${r.b}K</b><br><span class="note">${r.name}｜${r.terr}</span></td><td>${fmtMS(r.pace * 60)}</td><td>${clockOf(r.t1)}</td><td class="neg">${clockOf(r.t1 * sc)}</td>`; tb.appendChild(tr); });
-  $('gelList').innerHTML = [['起跑前', '6:20 預備膠（可選）'], ['#1 4.5K', 'A坡前的平路'], ['#2 10K', '水蛙頭一帶'], ['#3 14K', 'B坡前（土亭仔）'], ['#4 19K', '陡下坡後'], ['#5 24.4K', '冰店，C坡前最關鍵'], ['備用 27.5K', '大舌滿，快走時吃']].map(x => `<li><b>${x[0]}</b>　${x[1]}</li>`).join('');
+  $('gelList').innerHTML = [['起跑前', '6:20 預備膠（可選）'], ['#1 4.5K', 'A坡前的平路（配隨身水，或 3.5K 水站多喝一口）'], ['#2 10K', '9.6K 水蛙頭水站：到站前吃、到站配水'], ['#3 14K', '14.3K 土亭仔水站前吃'], ['#4 19K', '陡下坡後，20.4K 三隻魚補給站配水'], ['#5 24.4K', '24.3K 冰店補給站，C坡前最關鍵'], ['備用 27.5K', '大舌滿，快走時吃']].map(x => `<li><b>${x[0]}</b>　${x[1]}</li>`).join('');
 }
-function highlightPlan(km) { const i = PL.indexOf(rowAt(km)); $('planTbl').querySelectorAll('tbody tr').forEach(tr => tr.classList.toggle('cur', Number(tr.dataset.i) === i)); }
+function renderAid() {
+  $('aidTbl').tBodies[0].innerHTML = AID.map(a => `<tr data-n="${a.n}"><td class="num">${a.n}</td><td>${a.kmTxt ? a.km + '<br><span class="note">' + a.kmTxt + '</span>' : a.km}</td><td><b>${a.name}</b><br>${aidTags(a)}</td><td>${clockOf(planMin(a.km))}</td></tr>`).join('');
+}
+function highlightAid(km) { const na = AID.find(a => a.km > km - 0.06); $('aidTbl').querySelectorAll('tbody tr').forEach(tr => { const a = AID.find(x => x.n === Number(tr.dataset.n)); tr.classList.toggle('cur', a === na); tr.classList.toggle('past', a.km <= km - 0.06); }); }
+function highlightPlan(km) { highlightAid(km); const i = PL.indexOf(rowAt(km)); $('planTbl').querySelectorAll('tbody tr').forEach(tr => tr.classList.toggle('cur', Number(tr.dataset.i) === i)); }
 $('tgtLab2').textContent = fmtHM(S.target); renderPlan();
 /* ---------- 地圖：兩指縮放、單指拖曳 ---------- */
 (function () {

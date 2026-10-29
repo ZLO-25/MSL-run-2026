@@ -45,6 +45,10 @@ final class Route {
     static final double[] LM_KM = {0, 3.0, 5.8, 9.7, 11.2, 14.3, 15.8, 18.2, 20.4, 21.6, 24.4, 25.8, 27.5, 28.8};
     static final double[] GEL_KM = {4.5, 10, 14, 19, 24.4};
     static final String[] GEL_T = {"第一包", "第二包", "第三包", "第四包", "第五包"};
+    // 官方補給站（29K 用 1–10、14 號）：里程、編號、語音內容
+    static final double[] AID_KM = {3.5, 6.2, 9.6, 11.2, 14.3, 15.5, 18.2, 20.4, 21.7, 24.3, 26.9};
+    static final int[] AID_N = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14};
+    static final String[] AID_SAY = {"水", "水和補給", "水", "水、補給和鹽", "水", "水和補給", "水和鹽", "水和補給", "水和鹽", "水和補給", "水和補給"};
     // 關門：里程, 鳴槍後分鐘
     static final double[] CUT_KM = {11.2, 25.8, 28.8};
     static final double[] CUT_MIN = {145, 234, 270};
