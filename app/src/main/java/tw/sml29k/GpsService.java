@@ -52,7 +52,8 @@ public class GpsService extends Service implements LocationListener {
 
     // 狀態
     double curS = 0, acc = -1, dev = -1; long lastFix = 0, lastSave = 0, lastNotif = 0;
-    boolean hasHist = false; int badJumps = 0;
+    boolean hasHist = false, off = false; int badJumps = 0;
+    static final double OFF_M = 300;
     final ArrayDeque<long[]> hist = new ArrayDeque<>();    // {時間ms, 里程m*1000}
     String lastAlert = ""; long lastAlertAt = 0;
     double lastSplitS = 0;
@@ -122,9 +123,16 @@ public class GpsService extends Service implements LocationListener {
             b = li >= 0 ? Route.best(x, y, li - 10, li + 10) : new double[]{1e9, 0};
             if (b[0] > 100) b = Route.best(x, y, 0, Route.N - 2);
             if (b[1] > 27000) { double[] b0 = Route.best(x, y, 0, 5); if (b0[0] < b[0] + 60) b = b0; }
-            hasHist = true;
         }
-        curS = b[1]; dev = b[0];
+        dev = b[0];
+        if (dev > OFF_M) {            // 不在賽道上：不更新里程、不記分段、不跑賽道提醒
+            off = true; hasHist = false; hist.clear();
+            if (!lastAlert.equals("away")) { speak("你目前不在賽道上"); lastAlert = "away"; lastAlertAt = now; }
+            if (now - lastNotif > 5000) { updateNotif(); lastNotif = now; }
+            push(state()); return;
+        }
+        off = false; hasHist = true;
+        curS = b[1];
         hist.addLast(new long[]{now, (long) (curS * 1000)});
         while (!hist.isEmpty() && now - hist.peekFirst()[0] > 120_000) hist.pollFirst();
         if (now - lastSave > 20_000) { sp.edit().putFloat("pos", (float) curS).putLong("posT", now).apply(); lastSave = now; }
@@ -223,6 +231,7 @@ public class GpsService extends Service implements LocationListener {
             .addAction(new Notification.Action.Builder(null, "停止定位", ps).build()).build();
     }
     void updateNotif() {
+        if (off) { getSystemService(NotificationManager.class).notify(1, buildNotif("不在賽道上", "距賽道 " + dist(dev) + "｜GPS ±" + (int) acc + " m")); return; }
         double km = curS / 1000; int nx = Route.nextLandmark(curS); double emin = elapsedMin();
         String title = String.format(Locale.ROOT, "%.1fK", km) + (nx >= 0 ? "｜" + Route.LM_NAME[nx] + " 還 " + dist(Route.LM_KM[nx] * 1000 - curS) : "｜終點");
         String text;
