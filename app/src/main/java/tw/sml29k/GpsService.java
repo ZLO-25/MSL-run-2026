@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
+import android.location.GnssStatus;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -52,7 +53,8 @@ public class GpsService extends Service implements LocationListener {
 
     // 狀態
     double curS = 0, acc = -1, dev = -1; long lastFix = 0, lastSave = 0, lastNotif = 0;
-    boolean hasHist = false, off = false; int badJumps = 0;
+    boolean hasHist = false, off = false; int badJumps = 0; int satsUsed = 0, satsSeen = 0; long lastAnyFix = 0;
+    private GnssStatus.Callback gnssCb;
     static final double OFF_M = 300;
     final ArrayDeque<long[]> hist = new ArrayDeque<>();    // {時間ms, 里程m*1000}
     String lastAlert = ""; long lastAlertAt = 0;
@@ -82,7 +84,17 @@ public class GpsService extends Service implements LocationListener {
             PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
             if (wl == null) { wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sml29k:gps"); wl.acquire(6 * 3600_000L); }
             lm.removeUpdates(this);
+            // GPS 為主；Android 12+ 另加融合定位（fused）：起始定位快、樹蔭下較穩。兩者都進同一個 onLocationChanged。
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, this, Looper.getMainLooper());
+            if (Build.VERSION.SDK_INT >= 31 && lm.hasProvider(LocationManager.FUSED_PROVIDER))
+                lm.requestLocationUpdates(LocationManager.FUSED_PROVIDER, 1000, 0, this, Looper.getMainLooper());
+            if (gnssCb == null) {
+                gnssCb = new GnssStatus.Callback() {
+                    @Override public void onSatelliteStatusChanged(GnssStatus s) { int u = 0, n = s.getSatelliteCount(); for (int i = 0; i < n; i++) if (s.usedInFix(i)) u++; satsUsed = u; satsSeen = n; }
+                    @Override public void onStopped() { satsUsed = satsSeen = 0; }
+                };
+                lm.registerGnssStatusCallback(gnssCb, h);
+            }
         } catch (SecurityException e) { push("{\"err\":\"noperm\"}"); stopSelf(); return START_NOT_STICKY; }
         running = true;
         h.removeCallbacks(tickR); h.post(tickR);
@@ -93,7 +105,7 @@ public class GpsService extends Service implements LocationListener {
 
     @Override public void onDestroy() {
         running = false; h.removeCallbacks(tickR);
-        try { lm.removeUpdates(this); } catch (Exception ignored) { }
+        try { lm.removeUpdates(this); if (gnssCb != null) lm.unregisterGnssStatusCallback(gnssCb); } catch (Exception ignored) { }
         if (wl != null && wl.isHeld()) wl.release();
         if (tts != null) tts.shutdown();
         super.onDestroy();
@@ -103,8 +115,9 @@ public class GpsService extends Service implements LocationListener {
     // ---------- GPS → 路線里程 ----------
     @Override public void onLocationChanged(Location p) {
         long now = System.currentTimeMillis();
+        lastAnyFix = now;
+        if (p.getAccuracy() > 80) { if (acc < 0 || now - lastFix > 10000) acc = p.getAccuracy(); return; }   // 太粗的點只拿來顯示，不對位
         acc = p.getAccuracy(); lastFix = now;
-        if (acc > 80) return;
         double x = Route.toX(p.getLongitude()), y = Route.toY(p.getLatitude());
         double[] b;
         if (hasHist) {
@@ -213,7 +226,10 @@ public class GpsService extends Service implements LocationListener {
             JSONObject o = new JSONObject();
             o.put("s", curS).put("acc", acc).put("dev", dev).put("fixAge", lastFix == 0 ? -1 : (now - lastFix) / 1000)
              .put("pace", paceSec(now)).put("start", startMs()).put("splits", new JSONObject(sp.getString("splits", "{}")))
-             .put("alertKey", sp.getString("alertKey", "")).put("running", running);
+             .put("alertKey", sp.getString("alertKey", "")).put("running", running)
+             .put("fix", hasHist).put("off", off).put("sats", satsUsed).put("satsSeen", satsSeen)
+             .put("anyFixAge", lastAnyFix == 0 ? -1 : (now - lastAnyFix) / 1000)
+             .put("gpsOn", lm.isProviderEnabled(LocationManager.GPS_PROVIDER));
             return o.toString();
         } catch (JSONException e) { return "{}"; }
     }

@@ -74,7 +74,8 @@ main{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
 .pos{color:var(--ok)} .neg{color:var(--bad)} .mid{color:var(--warn)}
 h2{margin:0 0 6px;font-size:15px;color:var(--sub);font-weight:700}
 canvas{display:block;width:100%}
-#cvZoom{height:184px} #cvFull{height:170px}
+#cvZoom{height:184px}
+#zoomSel button{min-height:34px;padding:4px 10px;font-size:14px} #cvFull{height:170px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 button,select{font:inherit;font-weight:700;color:var(--fg);background:var(--btn);border:1px solid var(--line);border-radius:10px;padding:11px 8px;min-height:48px}
 button.on{background:var(--fg);color:var(--bg)}
@@ -169,7 +170,8 @@ main{padding-bottom:76px}
   </section>
 
   <section class="card">
-    <h2>前方 2.4K（上方數字＝每 250 m 平均坡度%，圓點＝每 100 m 資料點）</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0" id="zoomTitle">前方 2.5K</h2><div class="chips" id="zoomSel"></div></div>
+    <div class="note" id="zoomNote" style="margin:4px 0 2px">上方數字＝每 250 m 平均坡度 %；圓點＝每 100 m 資料點</div>
     <canvas id="cvZoom"></canvas>
   </section>
 
@@ -380,7 +382,7 @@ const DEMO_SPEED = 60;
   if (saved && Math.abs(now - saved) < 12 * 3600e3) startMs = saved;
   else if (now > GUN - 3600e3 && now < GUN + 7 * 3600e3) startMs = GUN;
 })();
-(function initPos() { const p = Number(sget('pos')), t = Number(sget('posT')); if (p && t && Date.now() - t < 2 * 3600e3) curS = p; })();
+(function initPos() { if (NATIVE) return; const p = Number(sget('pos')), t = Number(sget('posT')); if (p && t && Date.now() - t < 2 * 3600e3) curS = p; })();
 
 /* ---------- 格式 ---------- */
 const $ = id => document.getElementById(id);
@@ -413,14 +415,14 @@ function currentS() {
 }
 
 /* ---------- 原生服務狀態（APK 模式） ---------- */
-let nativePace = -1, nativeAlertKey = '', lastNative = 0;
+let nativePace = -1, nativeAlertKey = '', lastNative = 0, NS = null;
 window.onNativeState = function (st) {
   if (!st) return;
   if (st.err === 'noperm') { gpsMsg = '沒有定位權限。請到系統設定允許「位置」→「一律允許」。'; mode = 'manual'; schedule(); return; }
   if (st.err === 'gpsoff') { gpsMsg = '手機的定位功能是關的，請打開。'; schedule(); return; }
-  lastNative = Date.now();
+  lastNative = Date.now(); NS = st;
   if (mode !== 'gps') return;
-  curS = st.s; acc = st.acc; dev = st.dev; lastFix = st.fixAge < 0 ? 0 : Date.now() - st.fixAge * 1000; nativePace = st.pace; gpsMsg = '';
+  if (st.fix) curS = st.s; acc = st.acc; dev = st.dev; lastFix = st.fixAge < 0 ? 0 : Date.now() - st.fixAge * 1000; nativePace = st.pace; gpsMsg = '';
   if (st.start) startMs = st.start;
   if (st.splits) { const n = Object.keys(st.splits).length, o = Object.keys(S.splits).length; S.splits = st.splits; if (n !== o) { renderSplits(); const last = LM.filter(l => st.splits[l.n]).pop(); if (last) showArrive(last, st.splits[last.n]); } }
   schedule();
@@ -550,15 +552,16 @@ function drawProfile(c, w, h, k0, k1, yMin, yMax, opt) {
   if (opt.dots) { c.fillStyle = TH.fg; for (let i = Math.ceil(k0 * 10); i <= Math.floor(k1 * 10); i++) { c.beginPath(); c.arc(X(i / 10), Y(Ef(i * 100)), 2.4, 0, 7); c.fill(); } }
   if (opt.gl) {   // 每 250 m 平均坡度
     c.textAlign = 'center'; c.font = '700 12px system-ui,sans-serif';
-    for (let m = Math.ceil(k0 * 1000 / 250) * 250; m + 250 <= k1 * 1000 + 1; m += 250) {
-      const g = (E(m + 250) - E(m)) / 250 * 100, r = Math.round(g), x = X((m + 125) / 1000);
+    const gi = opt.gi || 250;
+    for (let m = Math.ceil(k0 * 1000 / gi) * gi; m + gi <= k1 * 1000 + 1; m += gi) {
+      const g = (E(m + gi) - E(m)) / gi * 100, r = Math.round(g), x = X((m + gi / 2) / 1000);
       c.strokeStyle = TH.line; c.lineWidth = 1; c.beginPath(); c.moveTo(X(m / 1000), padT - 14); c.lineTo(X(m / 1000), padT - 4); c.stroke();
       c.fillStyle = Math.abs(g) < 2 ? TH.sub : TH[gradeKey(g)]; c.fillText((r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r), x, padT - 9);
     }
   }
   if (opt.xt) {   // 里程刻度
     c.textAlign = 'center'; c.font = '12px system-ui,sans-serif'; c.fillStyle = TH.sub; c.strokeStyle = TH.sub; c.lineWidth = 1;
-    for (let k = Math.ceil(k0 / opt.xt) * opt.xt; k <= k1 + 1e-9; k += opt.xt) { const x = Math.round(X(k)) + .5; c.beginPath(); c.moveTo(x, base); c.lineTo(x, base + 4); c.stroke(); c.fillText(k.toFixed(1), x, base + 12); }
+    for (let k = Math.ceil(k0 / opt.xt) * opt.xt; k <= k1 + 1e-9; k += opt.xt) { const x = Math.round(X(k)) + .5; c.beginPath(); c.moveTo(x, base); c.lineTo(x, base + 4); c.stroke(); c.fillText(opt.xt >= 1 ? String(Math.round(k)) : k.toFixed(opt.xt < 0.5 ? 2 : 1), x, base + 12); }
   }
   c.textAlign = 'center'; c.font = '700 11px system-ui,sans-serif';
   for (const ct of CUT) if (ct.km >= k0 && ct.km <= k1 && ct.km < 28) {
@@ -568,9 +571,9 @@ function drawProfile(c, w, h, k0, k1, yMin, yMax, opt) {
   c.fillStyle = TH.warn; c.font = '12px system-ui,sans-serif';
   for (const g of GELS) if (g.k >= k0 && g.k <= k1) c.fillText('◆', X(g.k), Math.max(padT + 8, Y(E(g.k * 1000)) - 9));
   for (const l of LM) if (l.km >= k0 - .05 && l.km <= k1 + .05) {
-    const x = X(l.km), y = base + (opt.xt ? 31 : 14), r = l.n.length > 1 ? 10 : 9;
+    const x = X(l.km), y = base + (opt.xt ? 31 : 14), r = (k1 - k0) > 12 ? 7.5 : l.n.length > 1 ? 10 : 9;
     c.fillStyle = TH.fg; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
-    c.fillStyle = TH.bg; c.font = '700 10px system-ui,sans-serif'; c.fillText(l.n, x, y + .5);
+    c.fillStyle = TH.bg; c.font = '700 ' + ((k1 - k0) > 12 ? 8 : 10) + 'px system-ui,sans-serif'; c.fillText(l.n, x, y + .5);
   }
   if (opt.xk) { c.fillStyle = TH.sub; c.font = '12px system-ui,sans-serif'; for (const k of opt.xk) c.fillText(k + 'K', X(k), base - 7); }
   return { X, Y, padT, base, right: w - padR };
@@ -600,16 +603,22 @@ function drawFull(sM) {
   f.c.setTransform(1, 0, 0, 1, 0, 0); f.c.clearRect(0, 0, cv.width, cv.height); f.c.drawImage(fullCache, 0, 0);
   f.c.setTransform(f.dpr, 0, 0, f.dpr, 0, 0); marker(f.c, fullGeo, sM, 0, TOTAL / 1000);
 }
+const WINS = [1, 2.5, 5, 10, 28.8];
+let WIN = Number(sget('win')) || 2.5; if (!WINS.includes(WIN)) WIN = 2.5;
+function setWin(w) { WIN = w; sset('win', String(w)); for (const b of $('zoomSel').children) b.classList.toggle('on', Number(b.dataset.w) === w); $('zoomTitle').textContent = w >= 28 ? '全程' : '前方 ' + w + 'K'; const gi = gradeInterval(w); $('zoomNote').textContent = '上方數字＝每 ' + (gi >= 1000 ? gi / 1000 + ' km' : gi + ' m') + ' 平均坡度 %' + (w <= 3 ? '；圓點＝每 100 m 資料點' : ''); lastDrawS = -1e9; schedule(); }
+function gradeInterval(w) { for (const gi of [250, 500, 1000, 2500]) if (w * 1000 / gi <= 12) return gi; return 5000; }
+WINS.forEach(w => { const b = document.createElement('button'); b.dataset.w = w; b.textContent = w >= 28 ? '全程' : w + 'K'; b.onclick = () => setWin(w); $('zoomSel').appendChild(b); });
 function drawZoom(sM) {
   const f = fit($('cvZoom')); if (!f) return;
   f.c.clearRect(0, 0, f.w, f.h);
-  const WIN = 2.4, k0 = Math.max(0, Math.min(sM / 1000 - .3, TOTAL / 1000 - WIN)), k1 = k0 + WIN;
+  const full = WIN >= 28, back = full ? 0 : WIN * 0.12, k0 = full ? 0 : Math.max(0, Math.min(sM / 1000 - back, TOTAL / 1000 - WIN)), k1 = full ? TOTAL / 1000 : k0 + WIN;
   let mn = 1e9, mx = -1e9; for (let m = k0 * 1000; m <= k1 * 1000; m += 25) { const e = E3(m); mn = Math.min(mn, e); mx = Math.max(mx, e); }
   const mid = (mn + mx) / 2, span = Math.max(40, mx - mn + 16);
   const lo = Math.floor((mid - span / 2) / 5) * 5, hi = lo + Math.ceil(span / 5) * 5;
   let ts = 5; for (const c of [5, 10, 20, 50]) { ts = c; if ((hi - lo) / c <= 6) break; }
   const tk = []; for (let v = Math.ceil(lo / ts) * ts; v <= hi; v += ts) tk.push(v);
-  const geo = drawProfile(f.c, f.w, f.h, k0, k1, lo, hi, { ticks: tk, ef: E3, dots: true, gl: true, xt: 0.5, padB: 44, minStep: 10 });
+  const xt = WIN <= 1 ? 0.25 : WIN <= 2.5 ? 0.5 : WIN <= 5 ? 1 : WIN <= 10 ? 2 : 5;
+  const geo = drawProfile(f.c, f.w, f.h, k0, k1, lo, hi, { ticks: tk, ef: WIN <= 5 ? E3 : E, dots: WIN <= 3, gl: true, gi: gradeInterval(WIN), xt, padB: 44, minStep: WIN <= 5 ? 10 : 20 });
   marker(f.c, geo, sM, k0, k1, true);
 }
 
@@ -623,7 +632,8 @@ function renderClock(now) {
   $('elapsed').textContent = el == null ? '—' : fmtHMS(el);
   const st = $('status'); st.className = 'chip'; let t = '尚未開始';
   if (mode === 'gps') {
-    if (!lastFix) t = '搜尋 GPS…';
+    if (NATIVE && NS && !NS.fix && !(dev != null && dev > OFF && lastFix)) { t = '搜尋 GPS… 衛星 ' + (NS.sats || 0) + '/' + (NS.satsSeen || 0); }
+    else if (!lastFix) t = '搜尋 GPS…';
     else if (now - lastFix > 20000) { t = 'GPS 中斷 ' + Math.round((now - lastFix) / 1000) + ' 秒'; st.classList.add('bad'); }
     else if (dev != null && dev > OFF) { t = '不在賽道上 ' + fmtOff(dev); st.classList.add('warn'); }
     else if (dev != null && dev > 80) { t = '偏離路線 ' + Math.round(dev) + ' m'; st.classList.add('bad'); }
@@ -632,7 +642,25 @@ function renderClock(now) {
   st.textContent = t;
   const b = $('bat'); if (batLevel != null) { b.textContent = '🔋' + Math.round(batLevel * 100) + '%'; b.classList.toggle('low', batLevel <= 0.2); } else b.textContent = '';
 }
-function offCourse(now) { return mode === 'gps' && dev != null && dev > OFF && lastFix && now - lastFix < 20000; }
+function offCourse(now) { return mode === 'gps' && dev != null && dev > OFF && lastFix && now - lastFix < 20000 && !(NATIVE && NS && NS.fix); }
+function waitingFix(now) { return mode === 'gps' && (NATIVE ? !(NS && NS.fix) : !lastFix); }
+function renderWait(now) {
+  const s = NS || {};
+  $('km').textContent = '—'; $('rem').textContent = '—';
+  $('do').textContent = '等待 GPS 定位'; $('zone').style.borderLeftColor = TH.sub;
+  let diag = '';
+  if (NATIVE) {
+    if (s.gpsOn === false) diag = '手機的定位功能是關的，請到快速設定打開「位置」。';
+    else if (s.anyFixAge >= 0 && s.anyFixAge < 20) diag = '已有粗略位置（±' + Math.round(acc) + ' m），等待精確到 80 m 內。衛星：用 ' + (s.sats || 0) + ' / 看到 ' + (s.satsSeen || 0) + '。';
+    else diag = '衛星：用 ' + (s.sats || 0) + ' / 看到 ' + (s.satsSeen || 0) + '。室內或天黑的室內收不到，請到戶外空曠處，通常 30–60 秒。';
+  } else diag = '請到戶外空曠處，通常 30–60 秒。';
+  $('zname').textContent = diag;
+  for (const id of ['grade', 'alt', 'pace']) $(id).textContent = '—';
+  $('lmnum').textContent = '–'; $('lmname').textContent = '定位後顯示'; $('lmdist').textContent = '—'; $('lmnote').textContent = '定位成功後會自動顯示里程、坡度與下個地標。'; $('gel').textContent = '';
+  $('etaPlan').textContent = '—'; $('etaPred').textContent = '—'; $('etaDiff').textContent = ''; $('plan').textContent = '—'; $('diff').textContent = '—'; $('pred').textContent = '—'; setCls($('diff'), ''); setCls($('pred'), '');
+  $('cut').textContent = '—'; $('arrive').className = ''; $('alert').className = ''; lastAlertKey = '';
+  $('gpsNote').textContent = gpsMsg; $('cvZoom').parentElement.hidden = true;
+}
 function renderOff(now) {
   $('km').textContent = '—'; $('rem').textContent = '—';
   $('do').textContent = '你目前不在賽道上'; $('zname').textContent = '距離賽道最近點 ' + fmtOff(dev) + '（GPS 正常運作中）';
@@ -649,6 +677,7 @@ function render() {
   const now = Date.now();
   const sM = Math.max(0, Math.min(TOTAL, currentS())), km = sM / 1000;
   renderClock(now);
+  if (waitingFix(now) && !offCourse(now)) { renderWait(now); lastDrawS = -1e9; for (const [id, m] of [['bGps', 'gps'], ['bManual', 'manual'], ['bDemo', 'demo']]) $(id).classList.toggle('on', mode === m); return; }
   if (offCourse(now)) { renderOff(now); lastDrawS = -1e9; for (const [id, m] of [['bGps', 'gps'], ['bManual', 'manual'], ['bDemo', 'demo']]) $(id).classList.toggle('on', mode === m); return; }
   checkSplits(sM);
   $('cvZoom').parentElement.hidden = false;
@@ -805,7 +834,7 @@ $('tgtLab2').textContent = fmtHM(S.target); renderPlan();
   im.addEventListener('load', () => { sc = 1; tx = ty = 0; apply(); });
 })();
 
-readTheme(); renderSplits(); startTick(); render();
+readTheme(); renderSplits(); setWin(WIN); startTick(); render();
 if (!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
 </script>
 </body>
