@@ -634,7 +634,7 @@ let WIN = Number(sget('win')) || 2.5; if (!WINS.includes(WIN)) WIN = 2.5;
 function setWin(w) { WIN = w; sset('win', String(w)); for (const b of $('zoomSel').children) b.classList.toggle('on', Number(b.dataset.w) === w); $('zoomTitle').textContent = w >= 28 ? '全程' : '前方 ' + w + 'K'; const gi = gradeInterval(w); $('zoomNote').textContent = '上方數字＝每 ' + (gi >= 1000 ? gi / 1000 + ' km' : gi + ' m') + ' 平均坡度 %' + (w <= 3 ? '；圓點＝每 100 m 資料點' : ''); lastDrawS = -1e9; schedule(); }
 function gradeInterval(w) { for (const gi of [250, 500, 1000, 2500]) if (w * 1000 / gi <= 12) return gi; return 5000; }
 WINS.forEach(w => { const b = document.createElement('button'); b.dataset.w = w; b.textContent = w >= 28 ? '全程' : w + 'K'; b.onclick = () => setWin(w); $('zoomSel').appendChild(b); });
-function drawZoom(sM) {
+function drawZoom(sM, noMarker) {
   const f = fit($('cvZoom')); if (!f) return;
   f.c.clearRect(0, 0, f.w, f.h);
   const full = WIN >= 28, back = full ? 0 : WIN * 0.12, k0 = full ? 0 : Math.max(0, Math.min(sM / 1000 - back, TOTAL / 1000 - WIN)), k1 = full ? TOTAL / 1000 : k0 + WIN;
@@ -645,7 +645,7 @@ function drawZoom(sM) {
   const tk = []; for (let v = Math.ceil(lo / ts) * ts; v <= hi; v += ts) tk.push(v);
   const xt = WIN <= 1 ? 0.25 : WIN <= 2.5 ? 0.5 : WIN <= 5 ? 1 : WIN <= 10 ? 2 : 5;
   const geo = drawProfile(f.c, f.w, f.h, k0, k1, lo, hi, { ticks: tk, ef: WIN <= 5 ? E3 : E, dots: WIN <= 3, gl: true, gi: gradeInterval(WIN), xt, padB: 44, minStep: WIN <= 5 ? 10 : 20 });
-  marker(f.c, geo, sM, k0, k1, true);
+  if (!noMarker) marker(f.c, geo, sM, k0, k1, true);
 }
 
 /* ---------- 畫面 ---------- */
@@ -660,7 +660,7 @@ function renderClock(now) {
   if (mode === 'gps') {
     if (NATIVE && NS && !NS.fix && !(dev != null && dev > OFF && lastFix)) { t = '搜尋 GPS… 衛星 ' + (NS.sats || 0) + '/' + (NS.satsSeen || 0); }
     else if (!lastFix) t = '搜尋 GPS…';
-    else if (now - lastFix > 20000) { t = 'GPS 中斷 ' + Math.round((now - lastFix) / 1000) + ' 秒'; st.classList.add('bad'); }
+    else if (now - lastFix > 20000) { t = 'GPS 中斷 ' + ((now - lastFix) >= 120000 ? Math.round((now - lastFix) / 60000) + ' 分' : Math.round((now - lastFix) / 1000) + ' 秒'); st.classList.add('bad'); }
     else if (dev != null && dev > OFF) { t = '不在賽道上 ' + fmtOff(dev); st.classList.add('warn'); }
     else if (dev != null && dev > 80) { t = '偏離路線 ' + Math.round(dev) + ' m'; st.classList.add('bad'); }
     else { t = 'GPS ±' + Math.round(acc) + ' m'; st.classList.add(acc > 40 ? 'warn' : 'ok'); }
@@ -674,6 +674,18 @@ function renderTimer(now) {
   $('tPre').hidden = !(pre); $('tRun').hidden = !run || mode === 'demo'; $('timerCard').hidden = mode === 'demo' || s0 == null;
   if (pre) $('tCount').textContent = fmtHMS((s0 - now) / 1000);
   if (run) { const manual = startMs != null && Math.abs(startMs - GUN) > 1000; $('tLine').textContent = '計時中｜起跑 ' + hms(s0) + (manual ? '（手動）' : '（鳴槍）'); }
+}
+var idleNote = false;
+function idleChart() {      // 沒有位置時也顯示賽道高度圖（不畫位置點）
+  $('cvZoom').parentElement.hidden = false;
+  if (lastDrawS !== -2e9) { lastDrawS = -2e9; drawZoom(0, true); }
+  $('zoomNote').textContent = '尚無位置；定位成功後會標出你在哪。可用右上按鈕切換看多遠。';
+  idleNote = true;
+}
+function syncControls(sM) {
+  for (const [id, m] of [['bGps', 'gps'], ['bManual', 'manual'], ['bDemo', 'demo']]) $(id).classList.toggle('on', mode === m);
+  $('manual').hidden = mode !== 'manual';
+  if (mode === 'manual') $('slider').value = Math.round(sM);
 }
 function offCourse(now) { return mode === 'gps' && dev != null && dev > OFF && lastFix && now - lastFix < 20000 && !(NATIVE && NS && NS.fix); }
 function waitingFix(now) { return mode === 'gps' && (NATIVE ? !(NS && NS.fix) : !lastFix); }
@@ -692,7 +704,7 @@ function renderWait(now) {
   $('lmnum').textContent = '–'; $('lmname').textContent = '定位後顯示'; $('lmdist').textContent = '—'; $('lmnote').textContent = '定位成功後會自動顯示里程、坡度與下個地標。'; $('gel').textContent = '';
   $('etaPlan').textContent = '—'; $('etaPred').textContent = '—'; $('etaDiff').textContent = ''; $('plan').textContent = '—'; $('diff').textContent = '—'; $('pred').textContent = '—'; setCls($('diff'), ''); setCls($('pred'), '');
   $('cut').textContent = '—'; $('arrive').className = ''; $('alert').className = ''; lastAlertKey = '';
-  $('gpsNote').textContent = gpsMsg; $('cvZoom').parentElement.hidden = true;
+  $('gpsNote').textContent = gpsMsg; idleChart();
 }
 function renderOff(now) {
   $('km').textContent = '—'; $('rem').textContent = '—';
@@ -704,16 +716,17 @@ function renderOff(now) {
   $('cut').textContent = '—'; $('arrive').className = '';
   const al = $('alert'); al.className = 'show off'; al.textContent = '不在賽道上：離賽道 ' + fmtOff(dev) + '。'; lastAlertKey = '';
   $('gpsNote').textContent = ''; $('wlNote').textContent = NATIVE ? '定位由背景服務負責，鎖屏也會持續；提醒用震動與語音。' : '';
-  $('cvZoom').parentElement.hidden = true;
+  idleChart();
 }
 function render() {
   const now = Date.now();
   const sM = Math.max(0, Math.min(TOTAL, currentS())), km = sM / 1000;
   renderClock(now); renderTimer(now);
-  if (waitingFix(now) && !offCourse(now)) { renderWait(now); lastDrawS = -1e9; for (const [id, m] of [['bGps', 'gps'], ['bManual', 'manual'], ['bDemo', 'demo']]) $(id).classList.toggle('on', mode === m); return; }
-  if (offCourse(now)) { renderOff(now); lastDrawS = -1e9; for (const [id, m] of [['bGps', 'gps'], ['bManual', 'manual'], ['bDemo', 'demo']]) $(id).classList.toggle('on', mode === m); return; }
+  syncControls(sM);
+  if (waitingFix(now) && !offCourse(now)) { renderWait(now); return; }
+  if (offCourse(now)) { renderOff(now); return; }
   checkSplits(sM);
-  $('cvZoom').parentElement.hidden = false;
+  $('cvZoom').parentElement.hidden = false; if (idleNote) { idleNote = false; setWin(WIN); }
   checkSplits(sM);
   const moved = Math.abs(sM - lastDrawS) >= 10;
   if (moved) { lastDrawS = sM; drawZoom(sM); drawFull(sM); }
