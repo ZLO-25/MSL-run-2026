@@ -33,13 +33,21 @@ jobs:
           echo "KEYSTORE_PASS=$(cat ~/signing/pass.txt)" >> "$GITHUB_ENV"
       - name: Build release APK
         run: gradle assembleRelease --no-daemon
+      - name: 版本號
+        run: echo "VER=$(grep -oP "versionName\s+'\K[^']+" app/build.gradle)" >> "$GITHUB_ENV"
       - name: Rename
-        run: cp app/build/outputs/apk/release/app-release.apk 日月潭29K.apk
+        run: cp app/build/outputs/apk/release/app-release.apk "29K-v${VER}.apk"
       - uses: actions/upload-artifact@v4
-        with: { name: 日月潭29K-apk, path: 日月潭29K.apk }
-      - name: Publish release (latest)
+        with: { name: "29K-v${{ env.VER }}", path: "29K-v${{ env.VER }}.apk" }
+      - name: 發佈固定版本（每版各自保留）
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VER }}
+          name: 日月潭29K v${{ env.VER }}
+          files: 29K-v${{ env.VER }}.apk
+      - name: 更新「最新版」
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: 日月潭29K 最新版
-          files: 日月潭29K.apk
+          name: 日月潭29K 最新版（v${{ env.VER }}）
+          files: 29K-v${{ env.VER }}.apk
