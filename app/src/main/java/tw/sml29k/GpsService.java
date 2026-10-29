@@ -34,9 +34,9 @@ import java.util.Locale;
  * 畫面（WebView）只是把這裡的狀態畫出來。
  */
 public class GpsService extends Service implements LocationListener {
-    static final String ACT_START = "start", ACT_STOP = "stop";
+    static final String ACT_START = "start", ACT_STOP = "stop", ACT_TIMER = "timer";
     static final String CH = "race";
-    static final long GUN = 1761950100000L;            // 2026-11-01 06:35:00 +08:00
+    static final long GUN = 1793486100000L;            // 2026-11-01 06:35:00 +08:00（鳴槍）
     static final double DEMO_SPEED = 60;
 
     /** 畫面要的回呼（Activity 在前景時設定） */
@@ -78,6 +78,12 @@ public class GpsService extends Service implements LocationListener {
     @Override public int onStartCommand(Intent in, int flags, int id) {
         String a = in == null ? ACT_START : in.getAction();
         if (ACT_STOP.equals(a)) { stopSelf(); return START_NOT_STICKY; }
+        if (ACT_TIMER.equals(a)) {          // 通知列「我出發了」：以現在為起跑
+            if (!running) { stopSelf(); return START_NOT_STICKY; }
+            sp.edit().putLong("start", System.currentTimeMillis()).apply();
+            buzz(new long[]{0, 300, 100, 300}); speak("開始計時，加油");
+            updateNotif(); push(state()); return START_STICKY;
+        }
         Notification n = buildNotif("正在搜尋 GPS…", "請到空曠處");
         if (Build.VERSION.SDK_INT >= 29) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION); else startForeground(1, n);
         try {
@@ -157,7 +163,7 @@ public class GpsService extends Service implements LocationListener {
     @Override public void onProviderEnabled(String p) { }
 
     // ---------- 時間 ----------
-    long startMs() { long s = sp.getLong("start", 0); if (s > 0 && Math.abs(System.currentTimeMillis() - s) < 12 * 3600_000L) return s; long now = System.currentTimeMillis(); if (now > GUN - 3600_000L && now < GUN + 7 * 3600_000L) return GUN; return 0; }
+    long startMs() { long s = sp.getLong("start", 0); if (s > 0 && Math.abs(System.currentTimeMillis() - s) < 12 * 3600_000L) return s; long now = System.currentTimeMillis(); if (now > GUN - 12 * 3600_000L && now < GUN + 8 * 3600_000L) return GUN; return 0; }
     double elapsedMin() { long s = startMs(); return s == 0 ? -1 : (System.currentTimeMillis() - s) / 60000.0; }
     double targetMin() { return sp.getInt("target", 255); }
     /** 近 90 秒配速（秒/km），無法算則 -1 */
@@ -197,7 +203,7 @@ public class GpsService extends Service implements LocationListener {
     // ---------- 提醒（同一事件只提醒一次） ----------
     void checkAlerts(long now) {
         String key = "", say = ""; long[] pat = null;
-        double emin = elapsedMin();
+        double emin = (System.currentTimeMillis() - GUN) / 60000.0;   // 關門以鳴槍時間計
         if (curS > 24800 && curS < 26200) { key = "turn"; say = "注意，頭社路口，二十九K往右轉回向山，不要跟四十二K往左"; pat = new long[]{0, 300, 150, 300, 150, 600}; }
         else if (dev > 80 && now - lastFix < 20000) { key = "off" + (int) (curS / 500); say = "你離路線" + (int) dev + "公尺，確認有沒有跑錯"; pat = new long[]{0, 400, 200, 400}; }
         else {
@@ -241,9 +247,11 @@ public class GpsService extends Service implements LocationListener {
         PendingIntent pi = PendingIntent.getActivity(this, 0, i, PendingIntent.FLAG_IMMUTABLE);
         Intent stop = new Intent(this, GpsService.class).setAction(ACT_STOP);
         PendingIntent ps = PendingIntent.getService(this, 1, stop, PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent pt = PendingIntent.getService(this, 2, new Intent(this, GpsService.class).setAction(ACT_TIMER), PendingIntent.FLAG_IMMUTABLE);
         return new Notification.Builder(this, CH).setSmallIcon(R.drawable.ic_notif).setContentTitle(title).setContentText(text)
             .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(pi).setCategory(Notification.CATEGORY_NAVIGATION)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .addAction(new Notification.Action.Builder(null, "我出發了", pt).build())
             .addAction(new Notification.Action.Builder(null, "停止定位", ps).build()).build();
     }
     void updateNotif() {

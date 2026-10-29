@@ -128,6 +128,26 @@ main{padding-bottom:76px}
   <div id="alert" role="alert"></div>
   <div id="arrive"></div>
 
+  <section class="card" id="timerCard">
+    <div id="tPre" hidden>
+      <div class="lab">距離鳴槍 6:35</div>
+      <div class="big" id="tCount">—</div>
+      <button class="wide" id="bGo" style="margin-top:10px;min-height:64px;font-size:22px;background:var(--ok);color:#06251a;border:none">🏁 我出發了（現在開始計時）</button>
+      <div class="note" style="margin-top:6px">鳴槍時間 6:35 會自動開始；如果你被擋在後面，過起跑線時按這顆，已跑時間會從你過線起算（關門仍以鳴槍計）。</div>
+    </div>
+    <div id="tRun" hidden>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span id="tLine" style="font-size:16px"></span><button class="small" id="bFix">校正</button></div>
+      <div id="fixPanel" hidden class="ctl" style="margin-top:10px">
+        <button class="small" id="bGo2">我剛過起跑線＝現在起跑</button>
+        <div class="stepper" style="grid-template-columns:repeat(4,1fr)">
+          <button class="small" data-adj="-60000">已跑 +1 分</button><button class="small" data-adj="-10000">已跑 +10 秒</button>
+          <button class="small" data-adj="10000">已跑 −10 秒</button><button class="small" data-adj="60000">已跑 −1 分</button>
+        </div>
+        <button class="small" id="bGun2">回到鳴槍 6:35 自動計時</button>
+      </div>
+    </div>
+  </section>
+
   <section class="card">
     <div class="hero">
       <div>
@@ -379,9 +399,15 @@ let hist = [], startMs = null, demoT0 = 0, wl = null, batLevel = null, lastAlert
 const DEMO_SPEED = 60;
 (function initStart() {
   const saved = Number(NATIVE ? NP.start : sget('start')), now = Date.now();
-  if (saved && Math.abs(now - saved) < 12 * 3600e3) startMs = saved;
-  else if (now > GUN - 3600e3 && now < GUN + 7 * 3600e3) startMs = GUN;
+  if (saved && Math.abs(now - saved) < 20 * 3600e3) startMs = saved;    // 手動起跑時間（沒設定就用鳴槍）
 })();
+/* 有效起跑時間：手動設定優先；否則比賽日自動用 6:35 鳴槍。每次都重新判斷，不論 App 何時打開 */
+function effStart(now) {
+  if (startMs != null && Math.abs(now - startMs) < 20 * 3600e3) return startMs;
+  if (now > GUN - 12 * 3600e3 && now < GUN + 8 * 3600e3) return GUN;
+  return null;
+}
+function setStartTo(ms) { startMs = ms; if (NATIVE) Android.adjustStart(ms || 0); else sset('start', ms == null ? null : String(ms)); schedule(); }
 (function initPos() { if (NATIVE) return; const p = Number(sget('pos')), t = Number(sget('posT')); if (p && t && Date.now() - t < 2 * 3600e3) curS = p; })();
 
 /* ---------- 格式 ---------- */
@@ -407,7 +433,7 @@ function readTheme() {
 /* ---------- 時間與位置 ---------- */
 function elapsedSec() {
   if (mode === 'demo') return (Date.now() - demoT0) / 1000 * DEMO_SPEED;
-  return startMs == null ? null : (Date.now() - startMs) / 1000;
+  const s0 = effStart(Date.now()); return s0 == null ? null : (Date.now() - s0) / 1000;
 }
 function currentS() {
   if (mode === 'demo') return Math.min(TOTAL, planKm(elapsedSec() / 60) * 1000);
@@ -423,7 +449,7 @@ window.onNativeState = function (st) {
   lastNative = Date.now(); NS = st;
   if (mode !== 'gps') return;
   if (st.fix) curS = st.s; acc = st.acc; dev = st.dev; lastFix = st.fixAge < 0 ? 0 : Date.now() - st.fixAge * 1000; nativePace = st.pace; gpsMsg = '';
-  if (st.start) startMs = st.start;
+  if (st.start && st.start !== GUN) startMs = st.start; else if (st.start === GUN && startMs !== null && Math.abs(startMs - GUN) > 1000) { /* 保留手動值 */ }
   if (st.splits) { const n = Object.keys(st.splits).length, o = Object.keys(S.splits).length; S.splits = st.splits; if (n !== o) { renderSplits(); const last = LM.filter(l => st.splits[l.n]).pop(); if (last) showArrive(last, st.splits[last.n]); } }
   schedule();
 };
@@ -642,6 +668,13 @@ function renderClock(now) {
   st.textContent = t;
   const b = $('bat'); if (batLevel != null) { b.textContent = '🔋' + Math.round(batLevel * 100) + '%'; b.classList.toggle('low', batLevel <= 0.2); } else b.textContent = '';
 }
+function hms(ms) { const d = new Date(ms); return p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds()); }
+function renderTimer(now) {
+  const s0 = mode === 'demo' ? null : effStart(now), pre = s0 != null && now < s0, run = s0 != null && now >= s0;
+  $('tPre').hidden = !(pre); $('tRun').hidden = !run || mode === 'demo'; $('timerCard').hidden = mode === 'demo' || s0 == null;
+  if (pre) $('tCount').textContent = fmtHMS((s0 - now) / 1000);
+  if (run) { const manual = startMs != null && Math.abs(startMs - GUN) > 1000; $('tLine').textContent = '計時中｜起跑 ' + hms(s0) + (manual ? '（手動）' : '（鳴槍）'); }
+}
 function offCourse(now) { return mode === 'gps' && dev != null && dev > OFF && lastFix && now - lastFix < 20000 && !(NATIVE && NS && NS.fix); }
 function waitingFix(now) { return mode === 'gps' && (NATIVE ? !(NS && NS.fix) : !lastFix); }
 function renderWait(now) {
@@ -676,7 +709,7 @@ function renderOff(now) {
 function render() {
   const now = Date.now();
   const sM = Math.max(0, Math.min(TOTAL, currentS())), km = sM / 1000;
-  renderClock(now);
+  renderClock(now); renderTimer(now);
   if (waitingFix(now) && !offCourse(now)) { renderWait(now); lastDrawS = -1e9; for (const [id, m] of [['bGps', 'gps'], ['bManual', 'manual'], ['bDemo', 'demo']]) $(id).classList.toggle('on', mode === m); return; }
   if (offCourse(now)) { renderOff(now); lastDrawS = -1e9; for (const [id, m] of [['bGps', 'gps'], ['bManual', 'manual'], ['bDemo', 'demo']]) $(id).classList.toggle('on', mode === m); return; }
   checkSplits(sM);
@@ -733,10 +766,10 @@ function render() {
     if (emin > 0 && km >= 2) { const pf = PLAN_TOTAL * (emin / planAt); predEl.textContent = fmtHM(pf) + ' (' + clockOf(pf) + ')'; setCls(predEl, pf <= 265 ? 'pos' : pf <= 270 ? 'mid' : 'neg'); }
     else { predEl.textContent = '2K 後顯示'; setCls(predEl, ''); }
     const nc = CUT.find(c => c.km * 1000 > sM + 20);
-    if (nc && emin >= 0) {
-      const left = nc.min - emin, dist = nc.km - km, need = left > 0 ? left / dist : 0;
+    if (nc && (mode === 'demo' ? emin >= 0 : now - GUN >= 0)) {
+      const gunMin = mode === 'demo' ? emin : (now - GUN) / 60000, left = nc.min - gunMin, dist = nc.km - km, need = left > 0 ? left / dist : 0;
       cutDanger = left > 0 && dist > 0.3 && need < 9.5 && nc.km < 28;
-      cutEl.innerHTML = '關門 <b>' + nc.name + ' ' + nc.clock + '</b>（' + nc.km + 'K）：' +
+      cutEl.innerHTML = '關門（鳴槍計）<b>' + nc.name + ' ' + nc.clock + '</b>（' + nc.km + 'K）：' +
         (left > 0 ? '還有 <b class="' + (left < 15 ? 'neg' : left < 30 ? 'mid' : 'pos') + '">' + Math.floor(left) + ' 分</b>，剩 ' + dist.toFixed(1) + 'K，均速要 ≤ <b>' + fmtMS(need * 60) + '</b>/km' : '<b class="neg">已超過關門時間</b>');
     } else cutEl.textContent = nc ? '下個關門：' + nc.name + ' ' + nc.clock : '已過所有關門點';
   }
@@ -760,7 +793,7 @@ function render() {
 
 /* ---------- 節流：有在跑才每秒更新，否則 5 秒 ---------- */
 let tick = null;
-function startTick() { stopTick(); tick = setInterval(() => { if (mode === 'gps' || mode === 'demo' || startMs != null) render(); else renderClock(Date.now()); }, (mode === 'gps' || mode === 'demo') ? 1000 : 5000); }
+function startTick() { stopTick(); tick = setInterval(() => { if (mode === 'gps' || mode === 'demo' || effStart(Date.now()) != null) render(); else renderClock(Date.now()); }, (mode === 'gps' || mode === 'demo') ? 1000 : 5000); }
 function stopTick() { if (tick) { clearInterval(tick); tick = null; } }
 
 /* ---------- 事件 ---------- */
@@ -778,7 +811,11 @@ $('cvFull').addEventListener('click', e => {
 });
 $('dMore').addEventListener('toggle', () => { lastDrawS = -1e9; schedule(); });
 $('bStart').onclick = () => { startMs = Date.now(); if (NATIVE) Android.setStart(startMs); else { sset('start', String(startMs)); sset('splits', null); } S.splits = {}; renderSplits(); schedule(); };
-$('bGun').onclick = () => { startMs = GUN; if (NATIVE) Android.setStart(0); else sset('start', null); S.splits = {}; renderSplits(); schedule(); };
+$('bGo').onclick = () => setStartTo(Date.now()); $('bGo2').onclick = () => setStartTo(Date.now());
+$('bFix').onclick = () => { $('fixPanel').hidden = !$('fixPanel').hidden; };
+$('bGun2').onclick = () => setStartTo(null);
+document.querySelectorAll('[data-adj]').forEach(b => b.onclick = () => { const s0 = effStart(Date.now()); if (s0 != null) setStartTo(s0 + Number(b.dataset.adj)); });
+$('bGun').onclick = () => { setStartTo(null); schedule(); };
 $('target').value = String(S.target); $('tgtLab').textContent = fmtHM(S.target);
 $('target').onchange = e => { S.target = Number(e.target.value); pset('target', S.target); buildPlan(S.target); $('tgtLab').textContent = fmtHM(S.target); $('tgtLab2').textContent = fmtHM(S.target); renderPlan(); schedule(); };
 $('name').value = S.name; $('name').onchange = e => { S.name = e.target.value.trim(); pset('name', S.name); };

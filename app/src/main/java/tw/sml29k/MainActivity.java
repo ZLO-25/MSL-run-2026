@@ -112,6 +112,7 @@ public class MainActivity extends Activity {
             e.apply();
             if ("keepOn".equals(k)) runOnUiThread(MainActivity.this::applyKeepOn);
         }
+        @JavascriptInterface public void adjustStart(long ms) { if (ms <= 0) sp.edit().remove("start").apply(); else sp.edit().putLong("start", ms).apply(); }
         @JavascriptInterface public void clearSplits() { sp.edit().remove("splits").apply(); }
         @JavascriptInterface public void setStart(long ms) { if (ms <= 0) sp.edit().remove("start").remove("splits").apply(); else sp.edit().putLong("start", ms).remove("splits").apply(); }
         @JavascriptInterface public void testVibrate() { try { android.os.Vibrator v = Build.VERSION.SDK_INT >= 31 ? ((android.os.VibratorManager) getSystemService(VIBRATOR_MANAGER_SERVICE)).getDefaultVibrator() : (android.os.Vibrator) getSystemService(VIBRATOR_SERVICE); v.vibrate(android.os.VibrationEffect.createWaveform(new long[]{0, 200, 100, 200}, -1)); } catch (Exception ignored) { } }
