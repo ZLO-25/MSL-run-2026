@@ -1,0 +1,44 @@
+name: Build APK
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: 簽章金鑰（快取，不進程式碼）
+        uses: actions/cache@v4
+        with:
+          path: ~/signing
+          key: sml29k-signing-v1
+      - name: 沒有金鑰就產生一把
+        run: |
+          mkdir -p ~/signing
+          if [ ! -f ~/signing/release.keystore ]; then
+            openssl rand -hex 16 > ~/signing/pass.txt
+            keytool -genkeypair -keystore ~/signing/release.keystore -storepass "$(cat ~/signing/pass.txt)" -keypass "$(cat ~/signing/pass.txt)" -alias sml29k -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=SML29K, O=Personal, C=TW"
+          fi
+          echo "::add-mask::$(cat ~/signing/pass.txt)"
+          echo "KEYSTORE_PATH=$HOME/signing/release.keystore" >> "$GITHUB_ENV"
+          echo "KEYSTORE_PASS=$(cat ~/signing/pass.txt)" >> "$GITHUB_ENV"
+      - name: Build release APK
+        run: gradle assembleRelease --no-daemon
+      - name: Rename
+        run: cp app/build/outputs/apk/release/app-release.apk 日月潭29K.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: 日月潭29K-apk, path: 日月潭29K.apk }
+      - name: Publish release (latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: 日月潭29K 最新版
+          files: 日月潭29K.apk

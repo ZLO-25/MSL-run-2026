@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0f11">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>日月潭29K 賽道定位器</title>
+<style>
+/* 深色優先：Pixel 是 OLED，黑底省電；戶外亮度可切亮色 */
+:root{
+  --bg:#0b0f11;--card:#161c1f;--line:#28323a;--fg:#f4f6f5;--sub:#9fb0b6;
+  --ok:#3ddc97;--bad:#ff6b5e;--warn:#ffc24a;--btn:#20292e;
+  --up3:#ff5f52;--up2:#f58a6e;--up1:#a9605a;--flat:#4b575c;--dn1:#4f7fae;--dn2:#4a9bf0;--dn3:#7dc0ff;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    --bg:#f3f4f1;--card:#ffffff;--line:#d9ddd8;--fg:#101312;--sub:#5a6460;
+    --ok:#0f8a5c;--bad:#c93a30;--warn:#8f5f00;--btn:#e7eae6;
+    --up3:#a8302f;--up2:#e34948;--up1:#f2a3a2;--flat:#c9c8c2;--dn1:#9ec5f4;--dn2:#3987e5;--dn3:#184f95;
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f3f4f1;--card:#ffffff;--line:#d9ddd8;--fg:#101312;--sub:#5a6460;
+  --ok:#0f8a5c;--bad:#c93a30;--warn:#8f5f00;--btn:#e7eae6;
+  --up3:#a8302f;--up2:#e34948;--up1:#f2a3a2;--flat:#c9c8c2;--dn1:#9ec5f4;--dn2:#3987e5;--dn3:#184f95;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:18px/1.4 system-ui,-apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  padding:max(8px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));
+  -webkit-text-size-adjust:100%;overscroll-behavior:none}
+main{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-variant-numeric:tabular-nums}
+.chip{font-size:15px;font-weight:700;padding:5px 11px;border-radius:99px;background:var(--btn);color:var(--sub);white-space:nowrap}
+.chip.ok{color:var(--ok)} .chip.bad{color:var(--bad)} .chip.warn{color:var(--warn)}
+.right{display:flex;gap:10px;align-items:center;color:var(--sub);font-size:15px}
+#bat.low{color:var(--bad);font-weight:800}
+#alert{display:none;border-radius:14px;padding:12px 14px;font-size:21px;font-weight:800;line-height:1.3}
+#alert.show{display:block}
+#alert.turn{background:var(--bad);color:#fff}
+#alert.gel{background:var(--warn);color:#161200}
+#alert.off,#alert.cut{background:var(--btn);color:var(--bad);border:2px solid var(--bad)}
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.lab{font-size:14px;color:var(--sub);font-weight:600}
+.km{font-size:88px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+.km small{font-size:36px;margin-left:4px;letter-spacing:0;color:var(--sub)}
+.rem{text-align:right;padding-bottom:6px}
+.rem b{font-size:34px;font-variant-numeric:tabular-nums}
+.zone{border-left:10px solid var(--flat)}
+.do{font-size:28px;font-weight:800;line-height:1.25}
+.zname{font-size:17px;color:var(--sub);margin-top:4px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.mini{background:var(--btn);border-radius:10px;padding:8px 10px;min-width:0}
+.mini .t{font-size:13px;color:var(--sub);font-weight:600}
+.mini .v{font-size:25px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap}
+.mini .v small{font-size:14px;font-weight:600;color:var(--sub)}
+.lm{display:flex;gap:12px;align-items:center}
+.lmnum{flex:none;width:44px;height:44px;border-radius:50%;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-weight:800;font-size:19px}
+.lmname{font-size:22px;font-weight:800;line-height:1.2}
+.lmdist{margin-left:auto;font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lmnote{margin-top:8px;font-size:17px}
+.gel{margin-top:8px;font-size:17px;color:var(--sub)} .gel b{color:var(--fg)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.big{font-size:27px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.15}
+.cut{margin-top:10px;font-size:17px;border-top:1px solid var(--line);padding-top:10px}
+.pos{color:var(--ok)} .neg{color:var(--bad)} .mid{color:var(--warn)}
+h2{margin:0 0 6px;font-size:15px;color:var(--sub);font-weight:700}
+canvas{display:block;width:100%}
+#cvZoom{height:130px} #cvFull{height:170px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+button,select{font:inherit;font-weight:700;color:var(--fg);background:var(--btn);border:1px solid var(--line);border-radius:10px;padding:11px 8px;min-height:48px}
+button.on{background:var(--fg);color:var(--bg)}
+button.small{font-size:15px;min-height:42px;padding:8px}
+button.wide{width:100%}
+.ctl{display:flex;flex-direction:column;gap:10px}
+input[type=range]{width:100%;height:40px}
+input[type=text]{font:inherit;color:var(--fg);background:var(--btn);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;width:100%}
+.stepper{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{min-height:38px;padding:6px 10px;font-size:15px}
+.note{font-size:15px;color:var(--sub)} .note b{color:var(--fg)}
+.kv{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:16px}
+.kv select{min-height:42px;padding:6px 8px;font-size:16px}
+table{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+td,th{padding:5px 4px;text-align:right;border-bottom:1px solid var(--line)}
+td:first-child,th:first-child{text-align:left}
+ul.tips{margin:0;padding-left:20px;font-size:16px;color:var(--sub)} ul.tips li{margin:3px 0}
+details>summary{cursor:pointer;font-size:17px;font-weight:700;padding:12px 14px;list-style:none;display:flex;justify-content:space-between}
+details>summary::after{content:'＋';color:var(--sub)} details[open]>summary::after{content:'－'}
+details.card{padding:0} details.card>div{padding:0 14px 14px}
+[hidden]{display:none!important}
+nav.tabs{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);background:var(--card);border-top:1px solid var(--line);padding:6px max(12px,env(safe-area-inset-right,0px)) max(6px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));gap:6px;z-index:5}
+nav.tabs button{min-height:50px;font-size:18px;border:none;background:transparent;color:var(--sub);border-radius:12px}
+nav.tabs button.on{background:var(--btn);color:var(--fg)}
+main{padding-bottom:76px}
+.page[hidden]{display:none!important}
+.eta{margin-top:8px;font-size:18px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.eta b{font-size:22px;font-variant-numeric:tabular-nums}
+#arrive{display:none;border-radius:14px;padding:12px 14px;font-size:20px;font-weight:800;background:var(--ok);color:#06251a}
+#arrive.show{display:block}
+.plan tr.cur td{background:var(--btn);font-weight:800}
+.mapwrap{position:relative;overflow:hidden;border-radius:12px;background:#f9f9f7;touch-action:none;height:70vh}
+.mapwrap img{position:absolute;left:0;top:0;transform-origin:0 0;width:100%;user-select:none;-webkit-user-drag:none}
+.phase{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.phase b{flex:none;width:86px;font-size:15px;color:var(--sub)}
+.phase div{font-size:16px} .phase div b{display:block;width:auto;color:var(--fg);font-size:17px}
+@media (prefers-reduced-motion:no-preference){#alert.show{animation:pop .25s ease-out}}
+@keyframes pop{from{transform:scale(.97);opacity:.6}to{transform:none;opacity:1}}
+</style>
+</head>
+<body>
+<main>
+ <div class="page" id="pgRace">
+  <div class="top">
+    <span id="status" class="chip">尚未開始</span>
+    <span class="right"><span id="bat"></span><span id="clock"></span></span>
+  </div>
+
+  <div id="alert" role="alert"></div>
+  <div id="arrive"></div>
+
+  <section class="card">
+    <div class="hero">
+      <div>
+        <div class="lab">目前里程</div>
+        <div class="km"><span id="km">0.0</span><small>K</small></div>
+      </div>
+      <div class="rem"><div class="lab">還剩</div><b id="rem">28.8</b><small style="font-size:18px;color:var(--sub)"> K</small></div>
+    </div>
+  </section>
+
+  <section class="card zone" id="zone">
+    <div class="do" id="do">—</div>
+    <div class="zname" id="zname">—</div>
+    <div class="row3">
+      <div class="mini"><div class="t">坡度</div><div class="v" id="grade">—</div></div>
+      <div class="mini"><div class="t">海拔</div><div class="v" id="alt">—</div></div>
+      <div class="mini"><div class="t">目前配速</div><div class="v" id="pace">—</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="lm">
+      <div class="lmnum" id="lmnum">1</div>
+      <div class="lmname" id="lmname">—</div>
+      <div class="lmdist" id="lmdist">—</div>
+    </div>
+    <div class="eta"><span>計畫 <b id="etaPlan">—</b> 到</span><span>預計 <b id="etaPred">—</b></span><span id="etaDiff"></span></div>
+    <div class="lmnote" id="lmnote"></div>
+    <div class="gel" id="gel"></div>
+  </section>
+
+  <section class="card">
+    <div class="grid2">
+      <div><div class="lab">已跑時間</div><div class="big" id="elapsed">—</div></div>
+      <div><div class="lab">對照計畫 <span id="tgtLab">4:15</span></div><div class="big" id="diff">—</div></div>
+      <div><div class="lab">照目前進度完賽</div><div class="big" id="pred">—</div></div>
+      <div><div class="lab">計畫到此</div><div class="big" id="plan">—</div></div>
+    </div>
+    <div class="cut" id="cut">—</div>
+  </section>
+
+  <section class="card">
+    <h2>前方 3K</h2>
+    <canvas id="cvZoom"></canvas>
+  </section>
+
+  <section class="card ctl">
+    <button class="small wide" id="bMore">全程剖面・分段紀錄・設定</button>
+    <div class="seg">
+      <button id="bGps">GPS 定位</button>
+      <button id="bManual">手動</button>
+      <button id="bDemo">示範</button>
+    </div>
+    <div id="gpsNote" class="note"></div>
+    <div id="manual" hidden class="ctl">
+      <input type="range" id="slider" min="0" max="28800" step="50" value="0" aria-label="手動設定里程">
+      <div class="stepper">
+        <button class="small" data-step="-1000">−1K</button>
+        <button class="small" data-step="-100">−0.1K</button>
+        <button class="small" data-step="100">+0.1K</button>
+        <button class="small" data-step="1000">+1K</button>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </section>
+
+ </div><!-- /pgRace -->
+
+ <div class="page" id="pgPlan" hidden>
+  <section class="card">
+   <h2>分段配速（目標 <span id="tgtLab2">4:15</span>，鳴槍時間）</h2>
+   <div style="overflow-x:auto"><table class="plan" id="planTbl"><thead><tr><th>區段</th><th>配速</th><th>到達</th><th>底線</th></tr></thead><tbody></tbody></table></div>
+   <div class="note" style="margin-top:8px">紅字「底線」＝ 4:30 剛好關門。目前區段會反白。</div>
+  </section>
+  <section class="card">
+   <h2>四階段</h2>
+   <div class="phase"><b>0–12K</b><div><b>暖機存力</b>比目標慢一點，A坡縮步不衝</div></div>
+   <div class="phase"><b>12–18K</b><div><b>穩爬B坡</b>跑 4 走 1，最高點後陡下小步</div></div>
+   <div class="phase"><b>18–25.8K</b><div><b>護腿下坡</b>長下坡別衝，留腿給 C坡</div></div>
+   <div class="phase" style="border:0"><b>25.8–29K</b><div><b>C坡清空</b>快走＋碎步，最後 500m 才衝</div></div>
+  </section>
+  <section class="card">
+   <h2>能量膠 + 喝水</h2>
+   <ul class="tips" id="gelList"></ul>
+   <div class="note" style="margin-top:6px">每顆配 100–150 ml 清水；只在平路吃；每站都喝 1–2 口。</div>
+  </section>
+  <section class="card">
+   <h2>關門與提醒</h2>
+   <ul class="tips">
+    <li>纜車站 11.2K：9:00 關門</li>
+    <li><b>頭社 25.8K：最晚 10:29，保險 10:25；29K 右轉</b></li>
+    <li>終點 28.8K：11:05（4h30）</li>
+    <li>只跑靠湖側、靠右；鳴槍計時</li>
+    <li>不舒服就停，舉手找醫護 / AED Runner</li>
+   </ul>
+  </section>
+ </div>
+
+ <div class="page" id="pgMap" hidden>
+  <section class="card" style="padding:8px">
+   <div class="mapwrap" id="mapwrap"><img id="mapimg" src="map.png" alt="路線地圖與坡度"></div>
+   <div class="note" style="margin-top:6px">兩指縮放、單指拖曳。圓圈數字＝手冊地標編號；顏色＝坡度。</div>
+  </section>
+ </div>
+
+ <div class="page" id="pgMore" hidden>
+  <details class="card" id="dMore" open>
+    <summary>全程剖面・分段紀錄・設定</summary>
+    <div class="ctl">
+      <div><h2>全程剖面（手動模式可點選位置）</h2><canvas id="cvFull"></canvas></div>
+
+      <div>
+        <h2>分段紀錄（通過地標自動記下）</h2>
+        <table id="splits"><thead><tr><th>地標</th><th>K</th><th>時間</th><th>到達</th><th>vs計畫</th></tr></thead><tbody></tbody></table>
+        <div class="grid2" style="margin-top:8px">
+          <button class="small" id="bCopy">複製紀錄</button>
+          <button class="small" id="bClear">清除紀錄</button>
+        </div>
+      </div>
+
+      <div class="ctl">
+        <h2 style="margin:0">設定（只存在這支手機）</h2>
+        <div class="kv"><span>跑者名稱</span><input type="text" id="name" maxlength="20" placeholder="選填，顯示在紀錄" style="width:55%"></div>
+        <div class="kv"><span>目標完賽時間</span>
+          <select id="target">
+            <option value="225">3:45</option><option value="240">4:00</option><option value="255" selected>4:15</option><option value="265">4:25</option><option value="270">4:30（關門）</option>
+          </select></div>
+        <div class="kv"><span>震動提醒（吃膠、右轉、關門）</span><button class="small" id="bVib">開</button></div>
+        <div class="kv" id="rowTts" hidden><span>語音提醒（口袋裡也聽得到）</span><button class="small" id="bTts">開</button></div>
+        <div class="kv" id="rowKeep" hidden><span>看畫面時螢幕恆亮</span><button class="small" id="bKeep">關</button></div>
+        <div class="grid2" id="rowTest" hidden><button class="small" id="bTestVib">測試震動</button><button class="small" id="bTestTts">測試語音</button></div>
+        <div class="kv"><span>亮 / 暗（戶外太亮可切亮色）</span><button class="small" id="bTheme">切換</button></div>
+        <div class="grid2">
+          <button class="small" id="bStart">以現在為起跑（練習）</button>
+          <button class="small" id="bGun">改回 6:35 鳴槍</button>
+        </div>
+        <div class="note" id="wlNote"></div>
+      </div>
+
+      <div>
+        <h2>使用提醒</h2>
+        <ul class="tips">
+          <li>加到主畫面（Chrome 選單 →「加到主畫面」）會全螢幕、也能離線開。</li>
+          <li>賽前在戶外開一次，確認 GPS 變綠色（約 1 分鐘）。</li>
+          <li>GPS 抓不到：按「手動」，點最近看到的地標即可對位。</li>
+          <li>螢幕要保持亮著定位才會持續；用深色、亮度調低、帶行動電源。</li>
+          <li>里程是「落在官方路線上的位置」，跟手錶差一點很正常，以地標為準。</li>
+          <li>跑步時瞄一眼大字就好，提醒會用震動通知你。</li>
+        </ul>
+      </div>
+    </div>
+  </details>
+ </div>
+</main>
+<nav class="tabs"><button id="tRace" class="on">賽道</button><button id="tPlan">計畫</button><button id="tMap">地圖</button></nav>
+
+<script>
+"use strict";
+const D = {"elev":[768.1,768.4,764.4,761.9,763.6,763.6,762.2,765.5,783.1,776.7,763.0,763.4,768.9,762.7,753.1,744.3,747.7,753.3,754.9,751.4,750.7,752.6,756.6,759.3,765.9,766.2,766.4,766.2,764.7,768.9,769.0,770.2,768.3,765.3,770.1,764.4,778.6,768.9,765.6,776.2,769.8,767.2,769.7,775.3,768.8,770.8,771.0,762.9,761.3,756.8,754.9,760.8,765.0,771.6,764.7,758.4,764.0,763.5,774.8,786.4,796.6,805.1,818.1,809.1,822.7,806.7,813.3,826.5,830.2,830.9,819.0,811.5,804.9,809.5,806.9,824.6,809.1,801.8,787.1,818.1,801.7,796.3,783.0,781.7,791.6,784.2,784.8,796.2,800.0,814.5,802.9,799.4,814.5,806.5,798.1,804.0,811.2,792.7,811.8,819.3,785.5,797.7,808.8,830.3,824.7,819.7,822.4,809.6,803.4,806.0,797.0,801.9,800.9,804.3,790.3,779.9,777.6,783.3,773.9,773.8,763.8,767.7,767.4,769.3,785.1,774.4,774.7,782.3,792.6,793.6,795.6,778.9,778.5,767.9,768.6,776.0,773.0,780.3,803.6,783.5,801.3,797.7,790.2,801.8,800.3,793.0,796.7,802.9,816.6,827.4,827.9,829.8,846.0,854.7,856.0,843.9,851.4,850.0,852.2,853.3,850.4,856.0,858.0,850.3,849.9,838.8,850.2,864.9,860.0,831.6,848.3,832.1,812.3,821.7,816.7,812.1,792.4,791.3,796.3,788.4,782.6,778.5,773.4,770.7,765.2,763.7,766.0,770.7,776.4,769.5,774.5,778.5,773.6,769.2,779.7,781.8,782.0,776.1,783.6,796.4,782.6,774.3,773.1,782.7,780.6,776.0,793.9,794.1,794.1,794.4,765.9,790.8,796.5,784.6,793.9,777.4,788.0,786.6,793.6,791.3,790.1,795.6,778.8,783.2,768.1,780.8,788.2,764.8,762.5,733.4,741.0,742.4,738.0,727.3,720.0,711.0,706.8,711.5,699.1,694.7,678.4,666.6,673.9,656.5,656.8,655.0,650.7,647.1,646.6,645.7,645.1,645.7,644.7,650.4,650.1,646.5,649.2,651.9,657.4,664.4,665.4,667.3,672.9,682.2,676.8,682.5,685.3,693.5,703.4,707.2,714.3,722.2,726.2,736.1,734.0,733.5,746.9,762.8,780.4,787.0,791.0,794.0,807.3,820.7,804.3,781.9,773.9,771.8,767.3],"lon":[120.90138,120.90127,120.90147,120.90168,120.90189,120.90209,120.90216,120.90148,120.90061,120.90048,120.90067,120.90003,120.89969,120.9002,120.90069,120.90164,120.90259,120.90354,120.9042,120.90399,120.9036,120.90307,120.90278,120.90258,120.90306,120.90392,120.90475,120.90571,120.90666,120.90747,120.90837,120.9093,120.91018,120.91105,120.91189,120.91223,120.9132,120.91416,120.91474,120.91478,120.91536,120.91591,120.91626,120.91639,120.91652,120.9163,120.91698,120.9179,120.91878,120.91976,120.92065,120.92121,120.92208,120.92299,120.92311,120.92284,120.92316,120.92376,120.92391,120.92458,120.92524,120.92615,120.92688,120.92681,120.92727,120.92694,120.92774,120.9287,120.92933,120.93022,120.93116,120.93208,120.93273,120.93344,120.93439,120.93526,120.93582,120.93612,120.93637,120.93729,120.93739,120.93763,120.93789,120.93885,120.93958,120.94055,120.94125,120.94203,120.94274,120.94336,120.94312,120.94311,120.94376,120.94422,120.94402,120.94318,120.94222,120.94133,120.94055,120.93961,120.9389,120.9381,120.93804,120.93814,120.93767,120.93697,120.93601,120.9353,120.93461,120.93393,120.93332,120.93374,120.93464,120.93557,120.93623,120.9361,120.93593,120.9356,120.93467,120.93378,120.93286,120.933,120.93266,120.93215,120.93143,120.93067,120.92979,120.92951,120.92967,120.92969,120.92954,120.92863,120.92767,120.92742,120.92679,120.92595,120.92608,120.92558,120.92482,120.92496,120.92446,120.92413,120.92385,120.92299,120.92257,120.92234,120.92207,120.92226,120.92242,120.92261,120.92234,120.9219,120.92156,120.92115,120.92029,120.91961,120.91882,120.91892,120.91872,120.91797,120.91718,120.91666,120.91711,120.91756,120.91829,120.91839,120.91893,120.91934,120.91889,120.91859,120.91912,120.91867,120.91796,120.9177,120.917,120.91626,120.91536,120.91477,120.91466,120.91408,120.91314,120.91332,120.91364,120.91352,120.91302,120.91291,120.91316,120.91355,120.9133,120.91279,120.9132,120.9141,120.91425,120.91458,120.91553,120.91632,120.91694,120.91732,120.91763,120.9173,120.91656,120.91568,120.91486,120.9152,120.91542,120.91604,120.91698,120.91763,120.91775,120.91756,120.91698,120.9176,120.91802,120.91793,120.91803,120.91743,120.91743,120.91712,120.91682,120.91604,120.91514,120.91424,120.91381,120.91298,120.91242,120.91168,120.91132,120.9104,120.90954,120.90872,120.90826,120.90853,120.90878,120.90838,120.90793,120.90799,120.90862,120.90951,120.9091,120.90823,120.90741,120.90699,120.90642,120.90617,120.90607,120.90518,120.90429,120.90434,120.90417,120.90347,120.9026,120.9017,120.90073,120.89978,120.89907,120.89836,120.89741,120.89646,120.89668,120.89756,120.89843,120.89905,120.89954,120.90008,120.90079,120.90158,120.90237,120.90291,120.90244,120.90147,120.90049,120.89958,120.89866,120.89773,120.89727,120.89785,120.8988,120.89976,120.90064,120.90128,120.90161,120.90155,120.90154,120.90147,120.90123,120.90106,120.90101,120.90105,120.90139],"lat":[23.85138,23.85218,23.85305,23.85393,23.85481,23.85569,23.85658,23.85718,23.85756,23.85839,23.85926,23.85989,23.8606,23.86133,23.86199,23.86223,23.86246,23.86262,23.86296,23.86383,23.86465,23.86541,23.86625,23.86713,23.8677,23.86727,23.86684,23.86675,23.86696,23.86748,23.86779,23.86751,23.86711,23.8667,23.86624,23.86548,23.86535,23.86516,23.86572,23.86661,23.86733,23.86808,23.86891,23.8698,23.87069,23.87154,23.87197,23.87198,23.87224,23.87222,23.87197,23.87221,23.8724,23.87267,23.87199,23.87117,23.87061,23.87032,23.87119,23.87183,23.87249,23.87268,23.87215,23.87128,23.87055,23.86971,23.86944,23.86942,23.86878,23.86844,23.86835,23.86825,23.86759,23.86749,23.86764,23.86802,23.86731,23.86654,23.8658,23.86584,23.86497,23.86412,23.86359,23.86355,23.86404,23.864,23.86361,23.86339,23.86278,23.86217,23.86138,23.86061,23.85996,23.85919,23.85832,23.85797,23.8578,23.85812,23.85775,23.85752,23.85806,23.85759,23.85682,23.85601,23.85524,23.85462,23.85443,23.8549,23.85504,23.85455,23.85386,23.85341,23.85314,23.85312,23.85265,23.85176,23.85087,23.85003,23.84976,23.84942,23.84928,23.84847,23.84763,23.84687,23.84644,23.84698,23.84665,23.84585,23.84498,23.84414,23.8433,23.84297,23.84288,23.84354,23.8438,23.84427,23.84503,23.84578,23.8461,23.84698,23.84761,23.84836,23.84919,23.84938,23.85018,23.85098,23.85019,23.84933,23.84845,23.84762,23.84685,23.84609,23.84528,23.8445,23.8443,23.84491,23.84542,23.84618,23.84687,23.84733,23.84779,23.84718,23.8464,23.84562,23.84507,23.8442,23.84345,23.84264,23.84192,23.84229,23.84262,23.84339,23.84401,23.84474,23.84535,23.84592,23.84611,23.84671,23.84759,23.84805,23.84828,23.84908,23.84992,23.85078,23.85146,23.85175,23.85095,23.85016,23.8493,23.84854,23.84786,23.84755,23.84669,23.84589,23.84569,23.84516,23.8445,23.84367,23.84282,23.84211,23.84268,23.84294,23.84259,23.84184,23.84101,23.84033,23.84046,23.83999,23.83919,23.83841,23.83778,23.83709,23.83637,23.8356,23.83471,23.83416,23.8333,23.83245,23.8316,23.83184,23.83205,23.83215,23.83292,23.83335,23.83401,23.83355,23.83273,23.83248,23.83224,23.83232,23.83156,23.8307,23.82989,23.83051,23.8313,23.83217,23.83283,23.8332,23.83328,23.83287,23.83251,23.83332,23.83396,23.83318,23.83229,23.83224,23.83257,23.83346,23.83431,23.83493,23.83524,23.8356,23.83558,23.83541,23.83483,23.83423,23.83401,23.83377,23.83421,23.8346,23.835,23.83569,23.83646,23.83722,23.83782,23.83836,23.83889,23.8396,23.84032,23.84039,23.84042,23.84077,23.84107,23.84134,23.84207,23.84272,23.84293,23.84313,23.84351,23.84418,23.84499,23.84588,23.84677,23.84767,23.84854,23.84942,23.85031,23.85121,23.85168]};
+const N = D.elev.length, TOTAL = (N - 1) * 100;
+const APP_KEY = 'sml29k_2026_';
+const NATIVE = !!(window.Android && window.Android.getPrefs);
+
+/* ---------- 路線幾何 ---------- */
+const LAT0 = 23.85, CX = Math.cos(LAT0 * Math.PI / 180);
+const PX = D.lon.map(l => (l - 120.92) * CX * 111320);
+const PY = D.lat.map(l => (l - LAT0) * 110574);
+const es = D.elev.map((_, i, a) => { let s = 0; for (let k = -2; k <= 2; k++) s += a[Math.max(0, Math.min(N - 1, i + k))]; return s / 5; });
+function E(s) { s = Math.max(0, Math.min(TOTAL, s)); const i = Math.floor(s / 100), t = s / 100 - i; const a = es[i], b = es[Math.min(N - 1, i + 1)]; return a + (b - a) * t; }
+function G(s) { const a = Math.max(0, s - 150), b = Math.min(TOTAL, s + 150); return (E(b) - E(a)) / (b - a) * 100; }
+function best(x, y, i0, i1) {
+  let bd = 1e9, bs = 0;
+  for (let i = i0; i <= i1; i++) {
+    const ax = PX[i], ay = PY[i], dx = PX[i + 1] - ax, dy = PY[i + 1] - ay, L2 = dx * dx + dy * dy;
+    let t = L2 ? ((x - ax) * dx + (y - ay) * dy) / L2 : 0; t = Math.max(0, Math.min(1, t));
+    const d = Math.hypot(x - (ax + t * dx), y - (ay + t * dy));
+    if (d < bd) { bd = d; bs = (i + t) * 100; }
+  }
+  return { d: bd, s: bs };
+}
+
+/* ---------- 賽事資料 ---------- */
+const LM = [
+  { n: '起', name: '向山 起點', km: 0, note: '慢開機：前 5K 照計畫配速，別被人群帶快。' },
+  { n: '1', name: '水社', km: 3.0, note: '平路。4.5K 吃第 1 包膠。' },
+  { n: '2', name: '文武廟', km: 5.8, note: 'A坡頂。恢復步幅，回到平路配速。' },
+  { n: '3', name: '水蛙頭', km: 9.7, note: '10K 吃第 2 包膠。' },
+  { n: '4', name: '纜車站', km: 11.2, note: '9:00 關門。確認時間，沒問題就維持。' },
+  { n: '5', name: '土亭仔', km: 14.3, note: 'B坡開始：吃第 3 包膠，改跑 4 走 1。' },
+  { n: '6', name: '玄奘寺', km: 15.8, note: '坡頂在 16.7K，之後陡下。' },
+  { n: '7', name: '玄光寺', km: 18.2, note: '陡下結束，小步快頻。19K 吃第 4 包膠。' },
+  { n: '8', name: '三隻魚', km: 20.4, note: '起伏平緩，穩住別加速。' },
+  { n: '9', name: '長型地', km: 21.6, note: '22.2K 起長下坡：別衝，留腿給 C坡。' },
+  { n: '10', name: '哇拉蜜冰店', km: 24.4, note: '吃第 5 包膠並補水，C坡前最關鍵。' },
+  { n: '11', name: '頭社派出所', km: 25.8, note: '29K 右轉回向山！10:29 前通過。' },
+  { n: '14', name: '大舌滿', km: 27.5, note: 'C坡最陡 7–11%：快走、碎步。有備用膠。' },
+  { n: '終', name: '向山 終點', km: 28.8, note: '最後 500m 才衝！' }
+];
+const GELS = [{ k: 4.5, t: '#1' }, { k: 10, t: '#2' }, { k: 14, t: '#3' }, { k: 19, t: '#4' }, { k: 24.4, t: '#5' }, { k: 27.5, t: '備用' }];
+const CUT = [{ km: 11.2, name: '纜車站', clock: '9:00', min: 145 }, { km: 25.8, name: '頭社', clock: '10:29', min: 234 }, { km: 28.8, name: '終點', clock: '11:05', min: 270 }];
+const ROWS = [
+  [0, 5.0, '向山 → 米洛克', '平緩', '慢開機，別跟人群衝', 8.0],
+  [5.0, 6.2, 'A坡 → 文武廟', '+60m 均5%', '縮小步，用力均勻', 9.75],
+  [6.2, 11.2, '文武廟 → 纜車站', '小起伏', '穩住節奏', 8.5],
+  [11.2, 14.3, '纜車站 → 土亭仔', '先下後上', '備好膠，準備爬坡', 8.5],
+  [14.3, 16.7, 'B坡 → 玄奘寺', '+65m 6–8%', '跑 4 分走 1 分', 10.25],
+  [16.7, 18.2, '玄奘寺後陡下', '−75m 局部10%', '小步快頻，別煞車', 8.25],
+  [18.2, 22.2, '玄光寺 → 長型地', '起伏平緩', '穩住，別加速', 8.5],
+  [22.2, 25.2, '長下坡 → 頭社', '−136m 均4.5%', '別衝，留腿給 C坡', 8.0],
+  [25.2, 25.8, '頭社谷底', '全場最低', '右轉回向山！', 8.5],
+  [25.8, 27.5, 'C坡前段', '+85m 均5%', '可以快走，別硬跑', 10.75],
+  [27.5, 28.3, 'C坡最陡', '+60m 7–11%', '大步快走，撐住', 13.0],
+  [28.3, 29.0, '隧道 → 終點', '下坡', '最後 500m 才衝', 8.0]
+];
+const BASE_TOTAL = ROWS.reduce((s, r) => s + (r[1] - r[0]) * r[5], 0);
+let PL = [], PLAN_TOTAL = BASE_TOTAL;
+function buildPlan(targetMin) {
+  const sc = targetMin / BASE_TOTAL; let cum = 0;
+  PL = ROWS.map(r => { const t0 = cum; cum += (r[1] - r[0]) * r[5] * sc; return { a: r[0], b: r[1], name: r[2], terr: r[3], act: r[4], pace: r[5] * sc, t0, t1: cum }; });
+  PLAN_TOTAL = cum;
+}
+function planMin(km) { for (const r of PL) if (km <= r.b) return r.t0 + (Math.max(km, r.a) - r.a) * r.pace; return PLAN_TOTAL; }
+function planKm(min) { for (const r of PL) if (min <= r.t1) return r.a + (min - r.t0) / r.pace; return TOTAL / 1000; }
+function rowAt(km) { return PL.find(r => km < r.b) || PL[PL.length - 1]; }
+const GUN = new Date('2026-11-01T06:35:00+08:00').getTime();
+
+/* ---------- 本機儲存（每支手機各自一份） ---------- */
+function sget(k) { try { return localStorage.getItem(APP_KEY + k); } catch (e) { return null; } }
+function sset(k, v) { try { if (v == null) localStorage.removeItem(APP_KEY + k); else localStorage.setItem(APP_KEY + k, v); } catch (e) { } }
+const NP = NATIVE ? (() => { try { return JSON.parse(Android.getPrefs()); } catch (e) { return {}; } })() : null;
+const S = NATIVE ? { target: NP.target || 255, name: NP.name || '', vib: NP.vib !== false, tts: NP.tts !== false, keepOn: !!NP.keepOn, theme: NP.theme || sget('theme'), splits: NP.splits || {} } : {
+  target: Number(sget('target')) || 255,
+  name: sget('name') || '',
+  vib: sget('vib') !== '0',
+  theme: sget('theme'),
+  splits: (() => { try { return JSON.parse(sget('splits') || '{}'); } catch (e) { return {}; } })(),
+};
+function pset(k, v) { if (NATIVE) Android.setPref(k, String(v)); else sset(k, v == null ? null : String(v)); }
+buildPlan(S.target);
+if (S.theme) document.documentElement.setAttribute('data-theme', S.theme);
+
+/* ---------- 狀態 ---------- */
+let mode = 'idle';
+let curS = 0, acc = null, dev = null, lastFix = 0, gpsMsg = '', watchId = null;
+let hist = [], startMs = null, demoT0 = 0, wl = null, batLevel = null, lastAlertKey = '';
+const DEMO_SPEED = 60;
+(function initStart() {
+  const saved = Number(NATIVE ? NP.start : sget('start')), now = Date.now();
+  if (saved && Math.abs(now - saved) < 12 * 3600e3) startMs = saved;
+  else if (now > GUN - 3600e3 && now < GUN + 7 * 3600e3) startMs = GUN;
+})();
+(function initPos() { const p = Number(sget('pos')), t = Number(sget('posT')); if (p && t && Date.now() - t < 2 * 3600e3) curS = p; })();
+
+/* ---------- 格式 ---------- */
+const $ = id => document.getElementById(id);
+const p2 = n => String(n).padStart(2, '0');
+function fmtMS(sec) { sec = Math.round(sec); return Math.floor(sec / 60) + ':' + p2(sec % 60); }
+function fmtHMS(sec) { const neg = sec < 0; sec = Math.abs(Math.round(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (neg ? '−' : '') + h + ':' + p2(m) + ':' + p2(s); }
+function fmtDelta(sec) { return Math.abs(sec) >= 3600 ? fmtHM(Math.abs(sec) / 60) + 'h' : fmtMS(Math.abs(sec)); }
+function fmtHM(min) { min = Math.round(min); return Math.floor(min / 60) + ':' + p2(min % 60); }
+function clockOf(min) { const t = new Date(GUN + min * 60000); return t.getHours() + ':' + p2(t.getMinutes()); }
+function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(1) + 'K' : Math.max(0, Math.round(m / 10) * 10) + ' m'; }
+function gradeKey(g) { return g >= 7 ? 'up3' : g >= 4 ? 'up2' : g >= 2 ? 'up1' : g <= -7 ? 'dn3' : g <= -4 ? 'dn2' : g <= -2 ? 'dn1' : 'flat'; }
+function gradeWord(g) { return g >= 7 ? '陡上' : g >= 4 ? '上坡' : g >= 2 ? '緩上' : g <= -7 ? '陡下' : g <= -4 ? '下坡' : g <= -2 ? '緩下' : '平路'; }
+
+/* 主題色只讀一次（getComputedStyle 很貴） */
+let TH = {};
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['bg', 'card', 'line', 'fg', 'sub', 'ok', 'bad', 'warn', 'up3', 'up2', 'up1', 'flat', 'dn1', 'dn2', 'dn3']) TH[k] = cs.getPropertyValue('--' + k).trim();
+  fullCache = null;
+}
+
+/* ---------- 時間與位置 ---------- */
+function elapsedSec() {
+  if (mode === 'demo') return (Date.now() - demoT0) / 1000 * DEMO_SPEED;
+  return startMs == null ? null : (Date.now() - startMs) / 1000;
+}
+function currentS() {
+  if (mode === 'demo') return Math.min(TOTAL, planKm(elapsedSec() / 60) * 1000);
+  return curS;
+}
+
+/* ---------- 原生服務狀態（APK 模式） ---------- */
+let nativePace = -1, nativeAlertKey = '', lastNative = 0;
+window.onNativeState = function (st) {
+  if (!st) return;
+  if (st.err === 'noperm') { gpsMsg = '沒有定位權限。請到系統設定允許「位置」→「一律允許」。'; mode = 'manual'; schedule(); return; }
+  if (st.err === 'gpsoff') { gpsMsg = '手機的定位功能是關的，請打開。'; schedule(); return; }
+  lastNative = Date.now();
+  if (mode !== 'gps') return;
+  curS = st.s; acc = st.acc; dev = st.dev; lastFix = st.fixAge < 0 ? 0 : Date.now() - st.fixAge * 1000; nativePace = st.pace; gpsMsg = '';
+  if (st.start) startMs = st.start;
+  if (st.splits) { const n = Object.keys(st.splits).length, o = Object.keys(S.splits).length; S.splits = st.splits; if (n !== o) { renderSplits(); const last = LM.filter(l => st.splits[l.n]).pop(); if (last) showArrive(last, st.splits[last.n]); } }
+  schedule();
+};
+let arriveUntil = 0, arriveText = '';
+function showArrive(l, s) { const d = s.plan - s.t; arriveText = '到 ' + l.name + '：比計畫' + (d >= 0 ? '快 ' : '慢 ') + fmtDelta(d); arriveUntil = Date.now() + 60000; }
+
+/* ---------- GPS ---------- */
+let badJumps = 0;
+function onPos(p) {
+  const a = p.coords.accuracy; acc = a; lastFix = Date.now(); gpsMsg = '';
+  if (a > 80) { schedule(); return; }                     // 太粗的點不用
+  const x = (p.coords.longitude - 120.92) * CX * 111320, y = (p.coords.latitude - LAT0) * 110574;
+  let b;
+  if (hist.length) {
+    const li = Math.floor(curS / 100);
+    b = best(x, y, Math.max(0, li - 3), Math.min(N - 2, li + 20));
+    if (b.d > 150) { const g = best(x, y, 0, N - 2); if (g.d < b.d - 30 && g.d < 100) b = g; }
+    const last = hist[hist.length - 1], dt = (lastFix - last.t) / 1000;
+    if (dt > 0 && Math.abs(b.s - last.s) / dt > 8 && badJumps < 3) { badJumps++; schedule(); return; }  // >8 m/s 視為雜訊，連續 3 次才接受
+    badJumps = 0;
+    if (b.s < curS && curS - b.s < 120) b.s = curS;       // 不倒退
+  } else {
+    const li = curS ? Math.floor(curS / 100) : -1;
+    b = li >= 0 ? best(x, y, Math.max(0, li - 10), Math.min(N - 2, li + 10)) : { d: 1e9 };
+    if (b.d > 100) b = best(x, y, 0, N - 2);
+    if (b.s > 27000) { const b0 = best(x, y, 0, 5); if (b0.d < b.d + 60) b = b0; }
+  }
+  curS = b.s; dev = b.d;
+  hist.push({ t: lastFix, s: curS });
+  while (hist.length && lastFix - hist[0].t > 120000) hist.shift();
+  if (lastFix - lastSave > 20000) { sset('pos', String(Math.round(curS))); sset('posT', String(lastFix)); lastSave = lastFix; }
+  schedule();
+}
+let lastSave = 0;
+function onErr(e) {
+  if (e.code === 1) { gpsMsg = '定位被拒絕。請在網址列左邊的鎖頭允許「位置」，或改用手動。'; setMode('manual'); }
+  else gpsMsg = '定位暫時失敗，會繼續嘗試（到空曠處）。';
+  schedule();
+}
+function startGPS() {
+  if (NATIVE) { gpsMsg = '正在啟動定位服務…'; hist = []; Android.start(); return; }
+  if (!navigator.geolocation) { gpsMsg = '這個瀏覽器不支援定位，已切到手動。'; setMode('manual'); return; }
+  if (!isSecureContext) { gpsMsg = '這個開啟方式不允許定位（需 https）。請用網址開啟，或改手動。'; }
+  if (watchId != null) navigator.geolocation.clearWatch(watchId);
+  hist = []; acc = null; dev = null; lastFix = 0;
+  watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+  wake();
+}
+function stopGPS() { if (NATIVE) { Android.stop(); return; } if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; } }
+async function wake() {
+  try { if ('wakeLock' in navigator && !wl) { wl = await navigator.wakeLock.request('screen'); wl.addEventListener('release', () => { wl = null; schedule(); }); } } catch (e) { wl = null; }
+  schedule();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { if (mode === 'gps' || mode === 'demo') wake(); startTick(); }
+  else stopTick();
+});
+function setMode(m) {
+  const prev = mode;
+  if (prev === 'demo' && m !== 'demo') curS = currentS();
+  if (m !== 'gps') stopGPS();
+  if (m === 'gps' && prev === 'gps') return;
+  mode = m;
+  if (m === 'gps') { gpsMsg = '正在搜尋 GPS…請站在空曠處。'; startGPS(); }
+  else if (m === 'demo') { demoT0 = Date.now(); hist = []; wake(); }
+  startTick(); schedule();
+}
+
+/* ---------- 震動與電量 ---------- */
+function buzz(pattern) { if (NATIVE && mode === 'gps') return; if (S.vib && navigator.vibrate) { try { navigator.vibrate(pattern); } catch (e) { } } }
+if (navigator.getBattery) navigator.getBattery().then(b => { const u = () => { batLevel = b.level; schedule(); }; u(); b.addEventListener('levelchange', u); }).catch(() => { });
+
+/* ---------- 分段紀錄 ---------- */
+let lastSplitS = curS;
+function checkSplits(sM) {
+  if (NATIVE && mode === 'gps') return;
+  const el = elapsedSec(); if (el == null || mode === 'idle') { lastSplitS = sM; return; }
+  for (const l of LM) {
+    const m = l.km * 1000;
+    if (m > lastSplitS && m <= sM && m > 0 && !S.splits[l.n]) {
+      S.splits[l.n] = { t: Math.round(el), c: new Date().getTime(), plan: Math.round(planMin(l.km) * 60) };
+      pset('splits', JSON.stringify(S.splits));
+      buzz([80]);
+      renderSplits(); showArrive(l, S.splits[l.n]);
+    }
+  }
+  lastSplitS = sM;
+}
+function renderSplits() {
+  const tb = $('splits').tBodies[0]; tb.textContent = '';
+  for (const l of LM) {
+    const s = S.splits[l.n]; if (!s) continue;
+    const tr = document.createElement('tr'), d = s.plan - s.t;
+    const c = new Date(s.c);
+    tr.innerHTML = `<td>${l.n} ${l.name}</td><td>${l.km}</td><td>${fmtHMS(s.t)}</td><td>${c.getHours()}:${p2(c.getMinutes())}</td><td class="${d >= 0 ? 'pos' : 'neg'}">${d >= 0 ? '快' : '慢'} ${fmtDelta(d)}</td>`;
+    tb.appendChild(tr);
+  }
+}
+function splitsText() {
+  const lines = [(S.name ? S.name + ' ' : '') + '日月潭29K 2026/11/1 分段'];
+  for (const l of LM) { const s = S.splits[l.n]; if (s) lines.push(`${l.km}K ${l.name}  ${fmtHMS(s.t)}  (${s.plan - s.t >= 0 ? '快' : '慢'}${fmtMS(Math.abs(s.plan - s.t))})`); }
+  return lines.join('\n');
+}
+
+/* ---------- 繪圖（快取 + 只在移動時重畫） ---------- */
+let fullCache = null;
+function drawProfile(c, w, h, k0, k1, yMin, yMax, opt) {
+  const padL = 36, padR = 8, padT = 16, padB = 28;
+  const X = k => padL + (k - k0) / (k1 - k0) * (w - padL - padR);
+  const Y = e => padT + (1 - (e - yMin) / (yMax - yMin)) * (h - padT - padB);
+  const base = h - padB;
+  c.font = '12px system-ui,sans-serif'; c.textBaseline = 'middle'; c.lineWidth = 1; c.strokeStyle = TH.line; c.fillStyle = TH.sub; c.textAlign = 'right';
+  for (const tk of opt.ticks) { const y = Math.round(Y(tk)) + .5; if (y < padT - 2 || y > base) continue; c.beginPath(); c.moveTo(padL, y); c.lineTo(w - padR, y); c.stroke(); c.fillText(String(tk), padL - 5, y); }
+  const step = Math.max(20, (k1 - k0) * 1000 / (w - padL - padR) * 2);
+  let curKey = null, runX = 0;
+  for (let m = k0 * 1000; m < k1 * 1000; m += step) {
+    const key = gradeKey(G(m)), x = X(m / 1000), x2 = X(Math.min(k1, (m + step) / 1000)), y = Y(E(m));
+    c.fillStyle = TH[key]; c.fillRect(x, y, x2 - x + .6, base - y);
+  }
+  c.strokeStyle = TH.fg; c.lineWidth = 1.5; c.beginPath();
+  for (let m = k0 * 1000, f = true; m <= k1 * 1000; m += step) { const x = X(m / 1000), y = Y(E(m)); f ? c.moveTo(x, y) : c.lineTo(x, y); f = false; }
+  c.stroke();
+  c.textAlign = 'center'; c.font = '700 11px system-ui,sans-serif';
+  for (const ct of CUT) if (ct.km >= k0 && ct.km <= k1 && ct.km < 28) {
+    const x = X(ct.km); c.strokeStyle = TH.bad; c.setLineDash([4, 3]); c.beginPath(); c.moveTo(x, padT); c.lineTo(x, base); c.stroke(); c.setLineDash([]);
+    c.fillStyle = TH.bad; c.fillText(ct.clock, Math.min(w - 20, Math.max(padL + 14, x)), 7);
+  }
+  c.fillStyle = TH.warn; c.font = '12px system-ui,sans-serif';
+  for (const g of GELS) if (g.k >= k0 && g.k <= k1) c.fillText('◆', X(g.k), Math.max(padT + 8, Y(E(g.k * 1000)) - 9));
+  for (const l of LM) if (l.km >= k0 - .05 && l.km <= k1 + .05) {
+    const x = X(l.km), y = base + 14, r = l.n.length > 1 ? 10 : 9;
+    c.fillStyle = TH.fg; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill();
+    c.fillStyle = TH.bg; c.font = '700 10px system-ui,sans-serif'; c.fillText(l.n, x, y + .5);
+  }
+  if (opt.xk) { c.fillStyle = TH.sub; c.font = '12px system-ui,sans-serif'; for (const k of opt.xk) c.fillText(k + 'K', X(k), base - 7); }
+  return { X, Y, padT, base };
+}
+function marker(c, geo, sM, k0, k1) {
+  const sK = sM / 1000; if (sK < k0 || sK > k1) return;
+  const x = geo.X(sK), y = geo.Y(E(sM));
+  c.strokeStyle = TH.fg; c.lineWidth = 2; c.beginPath(); c.moveTo(x, geo.padT); c.lineTo(x, geo.base); c.stroke();
+  c.fillStyle = TH.fg; c.strokeStyle = TH.bg; c.lineWidth = 3; c.beginPath(); c.arc(x, y, 7, 0, 7); c.fill(); c.stroke();
+}
+function fit(cv) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return null;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); fullCache = null; }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); return { c, w, h, dpr };
+}
+let fullGeo = null;
+function drawFull(sM) {
+  const cv = $('cvFull'); if (!$('dMore').open) return;
+  const f = fit(cv); if (!f) return;
+  if (!fullCache) {
+    fullCache = document.createElement('canvas'); fullCache.width = cv.width; fullCache.height = cv.height;
+    const cc = fullCache.getContext('2d'); cc.setTransform(f.dpr, 0, 0, f.dpr, 0, 0);
+    fullGeo = drawProfile(cc, f.w, f.h, 0, TOTAL / 1000, 620, 880, { ticks: [650, 750, 850], xk: [5, 10, 15, 20, 25] });
+  }
+  f.c.setTransform(1, 0, 0, 1, 0, 0); f.c.clearRect(0, 0, cv.width, cv.height); f.c.drawImage(fullCache, 0, 0);
+  f.c.setTransform(f.dpr, 0, 0, f.dpr, 0, 0); marker(f.c, fullGeo, sM, 0, TOTAL / 1000);
+}
+function drawZoom(sM) {
+  const f = fit($('cvZoom')); if (!f) return;
+  f.c.clearRect(0, 0, f.w, f.h);
+  const k0 = Math.max(0, Math.min(sM / 1000 - .4, TOTAL / 1000 - 3)), k1 = k0 + 3;
+  let mn = 1e9, mx = -1e9; for (let m = k0 * 1000; m <= k1 * 1000; m += 50) { const e = E(m); mn = Math.min(mn, e); mx = Math.max(mx, e); }
+  const mid = (mn + mx) / 2, span = Math.max(60, mx - mn + 24);
+  const lo = Math.floor((mid - span / 2) / 10) * 10, hi = lo + Math.ceil(span / 10) * 10;
+  const ts = (hi - lo) > 130 ? 50 : 20, tk = []; for (let v = Math.ceil(lo / ts) * ts; v <= hi; v += ts) tk.push(v);
+  const geo = drawProfile(f.c, f.w, f.h, k0, k1, lo, hi, { ticks: tk });
+  marker(f.c, geo, sM, k0, k1);
+}
+
+/* ---------- 畫面 ---------- */
+function setCls(el, c) { el.classList.remove('pos', 'neg', 'mid'); if (c) el.classList.add(c); }
+let lastDrawS = -1e9, lastSlowS = -1e9, pending = false;
+function schedule() { if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; render(); }); } }
+function renderClock(now) {
+  const el = elapsedSec();
+  $('clock').textContent = mode === 'demo' ? '模擬 ' + clockOf(el / 60) : new Date(now).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  $('elapsed').textContent = el == null ? '—' : fmtHMS(el);
+  const st = $('status'); st.className = 'chip'; let t = '尚未開始';
+  if (mode === 'gps') {
+    if (!lastFix) t = '搜尋 GPS…';
+    else if (now - lastFix > 20000) { t = 'GPS 中斷 ' + Math.round((now - lastFix) / 1000) + ' 秒'; st.classList.add('bad'); }
+    else if (dev != null && dev > 80) { t = '偏離路線 ' + Math.round(dev) + ' m'; st.classList.add('bad'); }
+    else { t = 'GPS ±' + Math.round(acc) + ' m'; st.classList.add(acc > 40 ? 'warn' : 'ok'); }
+  } else if (mode === 'manual') t = '手動'; else if (mode === 'demo') t = '示範 ×' + DEMO_SPEED;
+  st.textContent = t;
+  const b = $('bat'); if (batLevel != null) { b.textContent = '🔋' + Math.round(batLevel * 100) + '%'; b.classList.toggle('low', batLevel <= 0.2); } else b.textContent = '';
+}
+function render() {
+  const now = Date.now();
+  const sM = Math.max(0, Math.min(TOTAL, currentS())), km = sM / 1000;
+  renderClock(now);
+  checkSplits(sM);
+  const moved = Math.abs(sM - lastDrawS) >= 10;
+  if (moved) { lastDrawS = sM; drawZoom(sM); drawFull(sM); }
+
+  $('km').textContent = km.toFixed(1);
+  $('rem').textContent = Math.max(0, (TOTAL - sM) / 1000).toFixed(1);
+
+  const row = rowAt(km), g = G(sM);
+  $('zone').style.borderLeftColor = TH[gradeKey(g)];
+  $('do').textContent = row.act;
+  const aEnd = Math.min(TOTAL, sM + 500), dE = E(aEnd) - E(sM), aG = aEnd > sM ? dE / (aEnd - sM) * 100 : 0;
+  $('zname').textContent = row.name + '｜' + row.terr + '｜目標 ' + fmtMS(row.pace * 60) + '/km' + (aEnd - sM < 50 ? '' : '｜前 500m ' + gradeWord(aG) + (Math.abs(dE) >= 3 ? (dE > 0 ? ' +' : ' −') + Math.abs(Math.round(dE)) + 'm' : ''));
+  const gv = $('grade'); gv.textContent = (g > 0 ? '+' : g < 0 ? '−' : '') + Math.abs(g).toFixed(0) + '% ' + (g >= 2 ? '▲' : g <= -2 ? '▼' : '—'); gv.style.color = TH[gradeKey(g)];
+  $('alt').innerHTML = Math.round(E(sM)) + '<small> m</small>';
+  let paceTxt = '—';
+  if (mode === 'demo') paceTxt = fmtMS(row.pace * 60);
+  else if (NATIVE && mode === 'gps') { if (nativePace === 0) paceTxt = '停'; else if (nativePace > 0) paceTxt = fmtMS(nativePace); }
+  else if (mode === 'gps' && hist.length > 1 && now - lastFix < 20000) {
+    const old = hist.find(h => now - h.t <= 90000), last = hist[hist.length - 1];
+    if (old && last.t - old.t >= 30000) { const ds = last.s - old.s; paceTxt = ds < 20 ? '停' : fmtMS((last.t - old.t) / 1000 / ds * 1000); }
+  }
+  $('pace').innerHTML = paceTxt + (paceTxt.includes(':') ? '<small>/km</small>' : '');
+
+  const nl = LM.find(l => l.km * 1000 > sM + 20);
+  if (nl) { $('lmnum').textContent = nl.n; $('lmname').textContent = nl.name; $('lmdist').textContent = fmtDist(nl.km * 1000 - sM); $('lmnote').textContent = nl.note; }
+  else { $('lmnum').textContent = '終'; $('lmname').textContent = '已到終點'; $('lmdist').textContent = '🎉'; $('lmnote').textContent = '完賽！先慢走 10 分鐘、補水。'; }
+  // 預計到達：計畫時刻 vs 照目前配速（沒有配速就用計畫配速）
+  { const el0 = elapsedSec();
+    if (nl && el0 != null && el0 >= 0) {
+      const pm = planMin(nl.km), remK = (nl.km * 1000 - sM) / 1000;
+      let pace = mode === 'demo' ? rowAt(km).pace : (NATIVE && mode === 'gps') ? (nativePace > 0 ? nativePace / 60 : rowAt(km).pace) : (paceTxt.includes(':') ? (Number(paceTxt.split(':')[0]) + Number(paceTxt.split(':')[1]) / 60) : rowAt(km).pace);
+      const pred = el0 / 60 + remK * pace, d = pm - pred;
+      $('etaPlan').textContent = clockOf(pm); $('etaPred').textContent = clockOf(pred);
+      const de = $('etaDiff'); de.textContent = (d >= 0 ? '早 ' : '晚 ') + fmtDelta(d * 60); setCls(de, d >= -0.01 ? 'pos' : d > -5 ? 'mid' : 'neg');
+    } else { $('etaPlan').textContent = nl ? clockOf(planMin(nl.km)) : '—'; $('etaPred').textContent = '—'; $('etaDiff').textContent = ''; } }
+  const ar = $('arrive'); if (Date.now() < arriveUntil) { ar.textContent = '✔ ' + arriveText; ar.className = 'show'; } else ar.className = '';
+  highlightPlan(km);
+  const ng = GELS.find(x => x.k * 1000 > sM - 80), gelNear = ng && (ng.k * 1000 - sM) < 250;
+  $('gel').innerHTML = ng ? '◆ 能量膠 <b>' + ng.t + '</b>　' + (gelNear ? '<b>就是現在（平路再吃）</b>' : '還有 ' + fmtDist(ng.k * 1000 - sM) + '（' + ng.k + 'K）') : '補給都吃完了。';
+
+  const el = elapsedSec(), planAt = planMin(km);
+  $('plan').textContent = fmtHM(planAt) + ' (' + clockOf(planAt) + ')';
+  const cutEl = $('cut'), diffEl = $('diff'), predEl = $('pred');
+  let cutDanger = false;
+  if (el == null) { diffEl.textContent = '—'; predEl.textContent = '—'; setCls(diffEl, ''); setCls(predEl, ''); cutEl.textContent = '比賽日 6:35 自動開始計時。練習請到「設定」按「以現在為起跑」。'; }
+  else {
+    const emin = el / 60, d = planAt - emin;
+    if (emin < 0) { diffEl.textContent = '尚未鳴槍'; setCls(diffEl, ''); }
+    else { diffEl.textContent = (d >= 0 ? '快 ' : '慢 ') + (Math.abs(d) >= 60 ? fmtHM(Math.abs(d)) + 'h' : fmtMS(Math.abs(d) * 60)); setCls(diffEl, d >= -0.01 ? 'pos' : d > -5 ? 'mid' : 'neg'); }
+    if (emin > 0 && km >= 2) { const pf = PLAN_TOTAL * (emin / planAt); predEl.textContent = fmtHM(pf) + ' (' + clockOf(pf) + ')'; setCls(predEl, pf <= 265 ? 'pos' : pf <= 270 ? 'mid' : 'neg'); }
+    else { predEl.textContent = '2K 後顯示'; setCls(predEl, ''); }
+    const nc = CUT.find(c => c.km * 1000 > sM + 20);
+    if (nc && emin >= 0) {
+      const left = nc.min - emin, dist = nc.km - km, need = left > 0 ? left / dist : 0;
+      cutDanger = left > 0 && dist > 0.3 && need < 9.5 && nc.km < 28;
+      cutEl.innerHTML = '關門 <b>' + nc.name + ' ' + nc.clock + '</b>（' + nc.km + 'K）：' +
+        (left > 0 ? '還有 <b class="' + (left < 15 ? 'neg' : left < 30 ? 'mid' : 'pos') + '">' + Math.floor(left) + ' 分</b>，剩 ' + dist.toFixed(1) + 'K，均速要 ≤ <b>' + fmtMS(need * 60) + '</b>/km' : '<b class="neg">已超過關門時間</b>');
+    } else cutEl.textContent = nc ? '下個關門：' + nc.name + ' ' + nc.clock : '已過所有關門點';
+  }
+
+  // 警示（同一事件只震一次）
+  const al = $('alert'); let key = '', cls = '', txt = '';
+  if (sM > 24800 && sM < 26200) { key = 'turn'; cls = 'turn'; txt = '⚠ 頭社路口：29K 往【右】轉回向山，不要跟 42K 往左！'; }
+  else if (mode === 'gps' && dev != null && dev > 80 && lastFix && now - lastFix < 20000) { key = 'off' + Math.floor(sM / 500); cls = 'off'; txt = '你離路線 ' + Math.round(dev) + ' m，確認有沒有跑錯路。'; }
+  else if (cutDanger) { key = 'cut'; cls = 'cut'; txt = '關門吃緊：請加快，必要時只走不停。'; }
+  else if (gelNear && ng.k !== 27.5) { key = 'gel' + ng.t; cls = 'gel'; txt = '◆ 該吃能量膠 ' + ng.t + ' 了（配 100–150 ml 水）'; }
+  al.className = cls ? 'show ' + cls : ''; al.textContent = txt;
+  if (key && key !== lastAlertKey && mode !== 'idle') buzz(cls === 'turn' ? [300, 150, 300, 150, 600] : cls === 'gel' ? [200, 100, 200] : [400, 200, 400]);
+  lastAlertKey = key;
+
+  for (const [id, m] of [['bGps', 'gps'], ['bManual', 'manual'], ['bDemo', 'demo']]) $(id).classList.toggle('on', mode === m);
+  $('manual').hidden = mode !== 'manual';
+  if (mode === 'manual') $('slider').value = Math.round(sM);
+  $('gpsNote').textContent = gpsMsg || (mode === 'idle' ? (NATIVE ? '按「開始定位」。鎖屏後仍持續定位與提醒。' : '按「GPS 定位」開始。練習或沒 GPS：按「手動」或「示範」。') : mode === 'demo' ? '示範：照計畫從頭跑一遍，1 秒＝1 分鐘。' : '');
+  $('wlNote').textContent = NATIVE ? '定位由背景服務負責，鎖屏也會持續；提醒用震動與語音。' : ('wakeLock' in navigator) ? (wl ? '螢幕恆亮：開啟' : (mode === 'gps' || mode === 'demo' ? '螢幕恆亮：未取得，請把螢幕逾時設長一點' : '')) : '此瀏覽器不支援螢幕恆亮，請把螢幕逾時調長';
+}
+
+/* ---------- 節流：有在跑才每秒更新，否則 5 秒 ---------- */
+let tick = null;
+function startTick() { stopTick(); tick = setInterval(() => { if (mode === 'gps' || mode === 'demo' || startMs != null) render(); else renderClock(Date.now()); }, (mode === 'gps' || mode === 'demo') ? 1000 : 5000); }
+function stopTick() { if (tick) { clearInterval(tick); tick = null; } }
+
+/* ---------- 事件 ---------- */
+$('bGps').onclick = () => { if (mode === 'gps') { stopGPS(); startGPS(); } else setMode('gps'); };
+$('bManual').onclick = () => { if (mode !== 'manual') { curS = currentS(); setMode('manual'); } };
+$('bDemo').onclick = () => setMode('demo');
+$('slider').oninput = e => { curS = Number(e.target.value); schedule(); };
+document.querySelectorAll('[data-step]').forEach(b => b.onclick = () => { curS = Math.max(0, Math.min(TOTAL, curS + Number(b.dataset.step))); schedule(); });
+LM.forEach(l => { const b = document.createElement('button'); b.textContent = l.n + ' ' + l.name.replace('向山 ', ''); b.onclick = () => { curS = Math.min(TOTAL, l.km * 1000); schedule(); }; $('chips').appendChild(b); });
+$('cvFull').addEventListener('click', e => {
+  if (mode === 'gps' || mode === 'demo') return;
+  const r = e.currentTarget.getBoundingClientRect(), padL = 36, padR = 8;
+  curS = Math.max(0, Math.min(TOTAL, (e.clientX - r.left - padL) / (r.width - padL - padR) * TOTAL));
+  if (mode === 'idle') mode = 'manual'; schedule();
+});
+$('dMore').addEventListener('toggle', () => { lastDrawS = -1e9; schedule(); });
+$('bStart').onclick = () => { startMs = Date.now(); if (NATIVE) Android.setStart(startMs); else { sset('start', String(startMs)); sset('splits', null); } S.splits = {}; renderSplits(); schedule(); };
+$('bGun').onclick = () => { startMs = GUN; if (NATIVE) Android.setStart(0); else sset('start', null); S.splits = {}; renderSplits(); schedule(); };
+$('target').value = String(S.target); $('tgtLab').textContent = fmtHM(S.target);
+$('target').onchange = e => { S.target = Number(e.target.value); pset('target', S.target); buildPlan(S.target); $('tgtLab').textContent = fmtHM(S.target); $('tgtLab2').textContent = fmtHM(S.target); renderPlan(); schedule(); };
+$('name').value = S.name; $('name').onchange = e => { S.name = e.target.value.trim(); pset('name', S.name); };
+function vibBtn() { $('bVib').textContent = S.vib ? '開' : '關'; $('bVib').classList.toggle('on', S.vib); }
+$('bVib').onclick = () => { S.vib = !S.vib; pset('vib', S.vib ? '1' : '0'); vibBtn(); if (S.vib && !NATIVE) buzz([100]); }; vibBtn();
+if (NATIVE) {
+  $('rowTts').hidden = $('rowKeep').hidden = $('rowTest').hidden = false;
+  const tb = () => { $('bTts').textContent = S.tts ? '開' : '關'; $('bTts').classList.toggle('on', S.tts); $('bKeep').textContent = S.keepOn ? '開' : '關'; $('bKeep').classList.toggle('on', S.keepOn); };
+  $('bTts').onclick = () => { S.tts = !S.tts; pset('tts', S.tts ? '1' : '0'); tb(); };
+  $('bKeep').onclick = () => { S.keepOn = !S.keepOn; pset('keepOn', S.keepOn ? '1' : '0'); tb(); };
+  $('bTestVib').onclick = () => Android.testVibrate(); $('bTestTts').onclick = () => Android.testSpeak(); tb();
+  $('bGps').textContent = '開始定位';
+  if (Android.isRunning()) { mode = 'gps'; gpsMsg = ''; }
+}
+$('bTheme').onclick = () => {
+  const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  const nx = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', nx); pset('theme', nx);
+  document.querySelector('meta[name=theme-color]').content = nx === 'dark' ? '#0b0f11' : '#f3f4f1'; readTheme(); lastDrawS = -1e9; schedule();
+};
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTheme(); lastDrawS = -1e9; schedule(); });
+$('bCopy').onclick = async () => { const t = splitsText(); try { if (NATIVE) Android.copy(t); else await navigator.clipboard.writeText(t); $('bCopy').textContent = '已複製'; } catch (e) { $('bCopy').textContent = '複製失敗'; } setTimeout(() => $('bCopy').textContent = '複製紀錄', 1500); };
+$('bClear').onclick = () => { if ($('bClear').textContent === '確定清除？') { S.splits = {}; if (NATIVE) Android.clearSplits(); else sset('splits', null); renderSplits(); $('bClear').textContent = '清除紀錄'; } else { $('bClear').textContent = '確定清除？'; setTimeout(() => $('bClear').textContent = '清除紀錄', 3000); } };
+let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { fullCache = null; lastDrawS = -1e9; schedule(); }, 150); });
+
+/* ---------- 分頁 ---------- */
+const PAGES = { tRace: 'pgRace', tPlan: 'pgPlan', tMap: 'pgMap' };
+function showPage(id) { for (const p of ['pgRace', 'pgPlan', 'pgMap', 'pgMore']) $(p).hidden = p !== id; for (const t in PAGES) $(t).classList.toggle('on', PAGES[t] === id); if (id === 'pgMore') { $('tRace').classList.add('on'); lastDrawS = -1e9; } window.scrollTo(0, 0); schedule(); }
+for (const t in PAGES) $(t).onclick = () => showPage(PAGES[t]);
+$('bMore').onclick = () => showPage('pgMore');
+/* ---------- 計畫表 ---------- */
+function renderPlan() {
+  const tb = $('planTbl').tBodies[0]; tb.textContent = ''; const sc = 270 / PLAN_TOTAL;
+  PL.forEach((r, i) => { const tr = document.createElement('tr'); tr.dataset.i = i; tr.innerHTML = `<td><b>${r.a}–${r.b}K</b><br><span class="note">${r.name}｜${r.terr}</span></td><td>${fmtMS(r.pace * 60)}</td><td>${clockOf(r.t1)}</td><td class="neg">${clockOf(r.t1 * sc)}</td>`; tb.appendChild(tr); });
+  $('gelList').innerHTML = [['起跑前', '6:20 預備膠（可選）'], ['#1 4.5K', 'A坡前的平路'], ['#2 10K', '水蛙頭一帶'], ['#3 14K', 'B坡前（土亭仔）'], ['#4 19K', '陡下坡後'], ['#5 24.4K', '冰店，C坡前最關鍵'], ['備用 27.5K', '大舌滿，快走時吃']].map(x => `<li><b>${x[0]}</b>　${x[1]}</li>`).join('');
+}
+function highlightPlan(km) { const i = PL.indexOf(rowAt(km)); $('planTbl').querySelectorAll('tbody tr').forEach(tr => tr.classList.toggle('cur', Number(tr.dataset.i) === i)); }
+$('tgtLab2').textContent = fmtHM(S.target); renderPlan();
+/* ---------- 地圖：兩指縮放、單指拖曳 ---------- */
+(function () {
+  const w = $('mapwrap'), im = $('mapimg'); let sc = 1, tx = 0, ty = 0, pts = new Map(), pd = 0, pm = null;
+  const apply = () => { im.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`; };
+  const clamp = () => { const W = w.clientWidth, H = w.clientHeight, iw = im.clientWidth * sc, ih = im.clientHeight * sc; tx = Math.min(0, Math.max(W - iw, tx)); ty = Math.min(0, Math.max(Math.min(0, H - ih), ty)); };
+  w.addEventListener('pointerdown', e => { pts.set(e.pointerId, [e.clientX, e.clientY]); w.setPointerCapture(e.pointerId); if (pts.size === 2) { const a = [...pts.values()]; pd = Math.hypot(a[0][0] - a[1][0], a[0][1] - a[1][1]); pm = [(a[0][0] + a[1][0]) / 2, (a[0][1] + a[1][1]) / 2]; } });
+  w.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return; const prev = pts.get(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pts.size === 1) { tx += e.clientX - prev[0]; ty += e.clientY - prev[1]; }
+    else if (pts.size === 2) { const a = [...pts.values()], d = Math.hypot(a[0][0] - a[1][0], a[0][1] - a[1][1]), m = [(a[0][0] + a[1][0]) / 2, (a[0][1] + a[1][1]) / 2]; const r = w.getBoundingClientRect(), f = Math.max(1, Math.min(4, sc * d / pd)) / sc; tx = (m[0] - r.left) - ((pm[0] - r.left) - tx) * f + (m[0] - pm[0]) * 0; ty = (m[1] - r.top) - ((pm[1] - r.top) - ty) * f; sc *= f; pd = d; pm = m; }
+    clamp(); apply();
+  });
+  const up = e => { pts.delete(e.pointerId); };
+  w.addEventListener('pointerup', up); w.addEventListener('pointercancel', up);
+  w.addEventListener('dblclick', () => { sc = 1; tx = ty = 0; apply(); });
+  im.addEventListener('load', () => { sc = 1; tx = ty = 0; apply(); });
+})();
+
+readTheme(); renderSplits(); startTick(); render();
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
+</script>
+</body>
+</html>

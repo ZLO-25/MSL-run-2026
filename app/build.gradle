@@ -1,0 +1,30 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'tw.sml29k'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'tw.sml29k.locator'
+        minSdk 29          // Android 10+；Pixel 7 / 8 Pro 都遠高於此
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+    signingConfigs {
+        release {
+            // 金鑰由 GitHub Actions 在編譯時產生並快取，不放在程式碼裡
+            def ks = System.getenv('KEYSTORE_PATH')
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv('KEYSTORE_PASS')
+                keyAlias 'sml29k'
+                keyPassword System.getenv('KEYSTORE_PASS')
+            }
+        }
+    }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.release }
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    lint { abortOnError false }
+}
