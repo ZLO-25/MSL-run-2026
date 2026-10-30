@@ -214,7 +214,7 @@ public class GpsService extends Service implements LocationListener {
             }
             if (key.isEmpty()) for (int i = 0; i < Route.GEL_KM.length; i++) {
                 double d = Route.GEL_KM[i] * 1000 - curS;
-                if (d > -80 && d < 250) { key = "gel" + i; say = "該吃" + Route.GEL_T[i] + "能量膠了，配一百毫升水"; pat = new long[]{0, 200, 100, 200}; break; }
+                if (d > -80 && d < 250) { key = "gel" + i; say = "補給站，站內走路吃" + Route.GEL_T[i] + "能量膠，配水吞下"; pat = new long[]{0, 200, 100, 200}; break; }
             }
             if (key.isEmpty()) for (int i = 0; i < Route.AID_KM.length; i++) {
                 double d = Route.AID_KM[i] * 1000 - curS;

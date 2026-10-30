@@ -252,7 +252,7 @@ main{padding-bottom:76px}
   <section class="card">
    <h2>能量膠 + 喝水</h2>
    <ul class="tips" id="gelList"></ul>
-   <div class="note" style="margin-top:6px">每顆配 100–150 ml 清水；只在平路吃；每站都喝 1–2 口。</div>
+   <div class="note" style="margin-top:6px">口訣 1‑3‑5‑7‑10：這五個站吃膠。進站走路，拿水、吃膠、吞下再起跑；每站至少喝 2–3 口。</div>
   </section>
   <section class="card">
    <h2>關門與提醒</h2>
@@ -354,13 +354,13 @@ function best(x, y, i0, i1) {
 /* ---------- 賽事資料 ---------- */
 const LM = [
   { n: '起', name: '向山 起點', km: 0, note: '慢開機：前 5K 照計畫配速，別被人群帶快。' },
-  { n: '1', name: '水社', km: 3.0, note: '平路。4.5K 吃第 1 包膠。' },
+  { n: '1', name: '水社', km: 3.0, note: '3.5K 水站：站內走路吃第 1 包膠，配水。' },
   { n: '2', name: '文武廟', km: 5.8, note: 'A坡頂。恢復步幅，回到平路配速。' },
-  { n: '3', name: '水蛙頭', km: 9.7, note: '10K 吃第 2 包膠。' },
+  { n: '3', name: '水蛙頭', km: 9.7, note: '9.6K 水站：站內走路吃第 2 包膠，配水。' },
   { n: '4', name: '纜車站', km: 11.2, note: '9:00 關門。確認時間，沒問題就維持。' },
   { n: '5', name: '土亭仔', km: 14.3, note: 'B坡開始：吃第 3 包膠，改跑 4 走 1。' },
   { n: '6', name: '玄奘寺', km: 15.8, note: '坡頂在 16.7K，之後陡下。' },
-  { n: '7', name: '玄光寺', km: 18.2, note: '陡下結束，小步快頻。19K 吃第 4 包膠。' },
+  { n: '7', name: '玄光寺', km: 18.2, note: '陡下結束，小步快頻。18.2K 站內吃第 4 包膠＋補鹽。' },
   { n: '8', name: '三隻魚', km: 20.4, note: '起伏平緩，穩住別加速。' },
   { n: '9', name: '長型地', km: 21.6, note: '22.2K 起長下坡：別衝，留腿給 C坡。' },
   { n: '10', name: '哇拉蜜冰店', km: 24.4, note: '吃第 5 包膠並補水，C坡前最關鍵。' },
@@ -385,7 +385,7 @@ const AID = [
 const AID_LAB = { w: '水', f: '補給', s: '鹽' };
 const aidTags = a => [...a.s].map(c => `<span class="tag ${c}">${AID_LAB[c]}</span>`).join('');
 const aidSay = a => [...a.s].map(c => AID_LAB[c]).join('＋');
-const GELS = [{ k: 4.5, t: '#1' }, { k: 10, t: '#2' }, { k: 14, t: '#3' }, { k: 19, t: '#4' }, { k: 24.4, t: '#5' }, { k: 27.5, t: '備用' }];
+const GELS = [{ k: 3.5, t: '#1' }, { k: 9.6, t: '#2' }, { k: 14.3, t: '#3' }, { k: 18.2, t: '#4' }, { k: 24.3, t: '#5' }, { k: 26.9, t: '備用' }];   // 每包膠都在補給站內吃（1‑3‑5‑7‑10 號站）
 const CUT = [{ km: 11.2, name: '纜車站', clock: '9:00', min: 145 }, { km: 25.8, name: '頭社', clock: '10:29', min: 234 }, { km: 28.8, name: '終點', clock: '11:05', min: 270 }];
 const ROWS = [
   [0, 5.0, '向山 → 米洛克', '平緩', '慢開機，別跟人群衝', 8.0],
@@ -840,8 +840,8 @@ function render() {
   if (sM > 24800 && sM < 26200) { key = 'turn'; cls = 'turn'; txt = '⚠ 頭社路口：29K 往【右】轉回向山，不要跟 42K 往左！'; }
   else if (mode === 'gps' && dev != null && dev > 80 && lastFix && now - lastFix < 20000) { key = 'off' + Math.floor(sM / 500); cls = 'off'; txt = '你離路線 ' + Math.round(dev) + ' m，確認有沒有跑錯路。'; }
   else if (cutDanger) { key = 'cut'; cls = 'cut'; txt = '關門吃緊：請加快，必要時只走不停。'; }
-  else if (gelNear && ng.k !== 27.5) { key = 'gel' + ng.t; cls = 'gel'; txt = '◆ 該吃能量膠 ' + ng.t + ' 了（配 100–150 ml 水）' + (na && Math.abs(na.km - ng.k) < 0.5 ? '・補給站就在旁邊' : ''); }
-  else if (na && na.km * 1000 - sM < 200) { key = 'aid' + na.n; cls = 'aid'; txt = '💧 補給站 ' + na.n + '：' + aidSay(na) + '。靠邊減速，喝 2–3 口'; }
+  else if (gelNear && ng.k !== 26.9) { key = 'gel' + ng.t; cls = 'gel'; txt = '◆ 補給站' + (na ? ' ' + na.n + ' ' : '') + '：站內走路吃能量膠 ' + ng.t + '，配水吞下' + (na && na.s.includes('s') ? '，順便補鹽' : ''); }
+  else if (na && na.km * 1000 - sM < 200) { key = 'aid' + na.n; cls = 'aid'; txt = '💧 補給站 ' + na.n + '：' + aidSay(na) + '。靠邊減速，喝 2–3 口' + (na.n === 14 ? '（撐不住可吃備用膠）' : ''); }
   al.className = cls ? 'show ' + cls : ''; al.textContent = txt;
   if (key && key !== lastAlertKey && mode !== 'idle') buzz(cls === 'turn' ? [300, 150, 300, 150, 600] : cls === 'gel' ? [200, 100, 200] : cls === 'aid' ? [150] : [400, 200, 400]);
   lastAlertKey = key;
@@ -912,7 +912,7 @@ function renderPlan() {
   renderAid();
   const tb = $('planTbl').tBodies[0]; tb.textContent = ''; const sc = 270 / PLAN_TOTAL;
   PL.forEach((r, i) => { const tr = document.createElement('tr'); tr.dataset.i = i; tr.innerHTML = `<td><b>${r.a}–${r.b}K</b><br><span class="note">${r.name}｜${r.terr}</span></td><td>${fmtMS(r.pace * 60)}</td><td>${clockOf(r.t1)}</td><td class="neg">${clockOf(r.t1 * sc)}</td>`; tb.appendChild(tr); });
-  $('gelList').innerHTML = [['起跑前', '6:20 預備膠（可選）'], ['#1 4.5K', 'A坡前的平路（配隨身水，或 3.5K 水站多喝一口）'], ['#2 10K', '9.6K 水蛙頭水站：到站前吃、到站配水'], ['#3 14K', '14.3K 土亭仔水站前吃'], ['#4 19K', '陡下坡後，20.4K 三隻魚補給站配水'], ['#5 24.4K', '24.3K 冰店補給站，C坡前最關鍵'], ['備用 27.5K', '大舌滿，快走時吃']].map(x => `<li><b>${x[0]}</b>　${x[1]}</li>`).join('');
+  $('gelList').innerHTML = [['起跑前', '6:15–6:20 預備膠（可選）'], ['#1 3.5K', '1 號站 水社（只有水）'], ['#2 9.6K', '3 號站 水蛙頭（只有水）'], ['#3 14.3K', '5 號站 土亭仔，吃完上 B坡'], ['#4 18.2K', '7 號站 玄光寺，陡下後，配水＋鹽'], ['#5 24.3K', '10 號站 冰店，C坡前最關鍵'], ['備用 26.9K', '14 號站 大舌滿，快走撐不住才吃']].map(x => `<li><b>${x[0]}</b>　${x[1]}</li>`).join('');
 }
 function renderAid() {
   $('aidTbl').tBodies[0].innerHTML = AID.map(a => `<tr data-n="${a.n}"><td class="num">${a.n}</td><td>${a.kmTxt ? a.km + '<br><span class="note">' + a.kmTxt + '</span>' : a.km}</td><td><b>${a.name}</b><br>${aidTags(a)}</td><td>${clockOf(planMin(a.km))}</td></tr>`).join('');
